@@ -1,6 +1,6 @@
 @extends('layouts.role')
 
-@section('title', 'Stok Masuk - Ethikopia Stock Management')
+@section('title', 'Stok Masuk - ' . config('branding.app_name'))
 
 @push('extra_css')
 <style>

@@ -70,8 +70,8 @@ class MasterBahanController extends Controller
     {
         return view('manager.master-bahan.create', [
             'title' => 'Tambah Barang',
-            'kategori_list' => config('ethikopia.kategori_list', []),
-            'satuan_list' => config('ethikopia.satuan_list', []),
+            'kategori_list' => config('lotra.kategori_list', []),
+            'satuan_list' => config('lotra.satuan_list', []),
         ]);
     }
 
@@ -85,8 +85,8 @@ class MasterBahanController extends Controller
         return view('manager.master-bahan.edit', [
             'title' => 'Edit Barang',
             'bahan' => $bahan,
-            'kategori_list' => config('ethikopia.kategori_list', []),
-            'satuan_list' => config('ethikopia.satuan_list', []),
+            'kategori_list' => config('lotra.kategori_list', []),
+            'satuan_list' => config('lotra.satuan_list', []),
         ]);
     }
 

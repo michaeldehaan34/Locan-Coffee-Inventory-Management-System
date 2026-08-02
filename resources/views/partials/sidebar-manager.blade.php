@@ -5,10 +5,10 @@
             <i class="bi bi-x-lg"></i>
         </button>
         <div class="sidebar-logo">
-            <img src="{{ asset('static/img/logo.png') }}" alt="Ethikopia Logo">
+            <img src="{{ asset(config('branding.logo')) }}" alt="{{ config('branding.company_name') }} Logo">
         </div>
         <div class="sidebar-brand-text">
-            <span class="brand-name">Ethikopia<span class="brand-sub">Coffeebay</span></span>
+            <span class="brand-name">{{ config('branding.company_name') }}<span class="brand-sub">{{ config('branding.subtitle') }}</span></span>
         </div>
         <button class="sidebar-toggle" type="button" id="sidebarCollapse" aria-label="Ciutkan menu">
             <i class="bi bi-chevron-left"></i>

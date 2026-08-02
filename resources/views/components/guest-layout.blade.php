@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Login - Ethikopia Stock Management') }}</title>
+    <title>{{ config('branding.app_name', 'LOTRA') }} - Login</title>
 
-    <link rel="preload" as="image" href="{{ asset('static/img/logo.png') }}">
+    <link rel="preload" as="image" href="{{ asset(config('branding.logo')) }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ asset('static/css/login.css') }}">
@@ -16,7 +16,7 @@
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
     <div class="page-loader" id="pageLoader" aria-hidden="true">
-        <img src="{{ asset('static/img/logo.png') }}" alt="Ethikopia" class="loader-logo">
+        <img src="{{ asset(config('branding.logo_white')) }}" alt="{{ config('branding.company_name') }}" class="loader-logo">
     </div>
 
     <div class="content-area">

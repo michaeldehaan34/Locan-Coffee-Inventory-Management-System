@@ -5,13 +5,13 @@
         <div class="login-shell">
             <section class="login-card" id="loginCard">
                 <div class="login-brand">
-                    <img src="{{ asset('static/img/logo.png') }}"
-                         alt="Ethikopia"
+                    <img src="{{ asset(config('branding.logo')) }}"
+                         alt="{{ config('branding.company_name') }}"
                          class="login-logo"
                          width="65"
                          height="65">
-                    <h1 class="login-appname">Ethikopia Coffeebay</h1>
-                    <p class="login-subtitle">Inventory Management System</p>
+                    <h1 class="login-appname">{{ config('branding.company_name') }} {{ config('branding.subtitle') }}</h1>
+                    <p class="login-subtitle">{{ config('branding.subtitle') }}</p>
                 </div>
 
                 <form method="POST" action="{{ route('login') }}" id="loginForm">

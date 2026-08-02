@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', 'Riwayat Token Listrik - Ethikopia Stock Management')
+@section('title', 'Riwayat Token Listrik - ' . config('branding.app_name'))
 
 @section('content')
 <div class="page-container">

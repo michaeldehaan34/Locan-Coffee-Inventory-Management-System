@@ -39,3 +39,4 @@ return [
      */
     'satuan_list' => ['pcs', 'kg', 'liter', 'gr', 'bag', 'sachet', 'roll', 'kaleng', 'ember', '12kg'],
 ];
+

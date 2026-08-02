@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', 'Dashboard Manager - Ethikopia Stock Management')
+@section('title', 'Dashboard Manager - ' . config('branding.app_name'))
 @section('content')
 <div class="page-container">
     <!-- Header -->
@@ -9,9 +9,9 @@
                 <div class="card-body">
                     <h2 class="mb-0">
                         <i class="bi bi-speedometer2 me-2 text-teal"></i>
-                        Dashboard Ethikopia Stock Management
+                        Dashboard {{ config('branding.app_name') }} {{ config('branding.subtitle') }}
                     </h2>
-                    <p class="text-muted mb-0">Selamat datang, {{ $managerName }}! Berikut Ringkasan Stock Ethikopia.</p>
+                    <p class="text-muted mb-0">Selamat datang, {{ $managerName }}! Berikut Ringkasan Stock {{ config('branding.company_name') }}.</p>
                 </div>
             </div>
         </div>

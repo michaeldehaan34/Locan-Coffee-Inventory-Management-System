@@ -11,7 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Seluruh aturan validasi disamakan persis dengan modul Flask
  * modules/stok_masuk.py (fungsi validate_form):
  *   - tanggal : wajib, format tanggal valid (Y-m-d)
- *   - shift   : wajib, harus termasuk daftar shift di config ethikopia.shift_list
+ *   - shift   : wajib, harus termasuk daftar shift di config lotra.shift_list
  *   - barista : wajib, tidak boleh kosong
  *   - item bahan (kolom dinamis dari Master Barang / Bahan aktif):
  *       * opsional, tapi bila diisi harus berupa angka (numeric)

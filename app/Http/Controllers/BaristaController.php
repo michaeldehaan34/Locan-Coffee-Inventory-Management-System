@@ -240,7 +240,7 @@ class BaristaController extends Controller
     {
         return view('barista.daily-clean', [
             'title' => 'Input Daily Clean',
-            'min_photos' => config('ethikopia.daily_clean_min_photos', 4),
+            'min_photos' => config('lotra.daily_clean_min_photos', 4),
             'shift_list' => shift_list(),
             'today' => now()->format('Y-m-d'),
         ]);
@@ -253,7 +253,7 @@ class BaristaController extends Controller
     {
         $tanggal = (string) $request->input('tanggal', '');
         $shift = (string) $request->input('shift', '');
-        $minPhotos = (int) config('ethikopia.daily_clean_min_photos', 4);
+        $minPhotos = (int) config('lotra.daily_clean_min_photos', 4);
 
         if ($tanggal === '') {
             flash_danger('Tanggal harus diisi.');

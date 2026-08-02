@@ -1,10 +1,10 @@
 <footer class="app-footer">
     <img class="app-footer-logo"
-         src="{{ asset('static/img/logo.png') }}"
-         alt="Ethikopia"
+         src="{{ asset(config('branding.logo')) }}"
+         alt="{{ config('branding.company_name') }}"
          width="22" height="22">
 
-    <div class="app-footer-name">Ethikopia Stock Management System</div>
+    <div class="app-footer-name">{{ config('branding.company_name') }} {{ config('branding.subtitle') }}</div>
 
     <div class="app-footer-meta">
         <span class="app-footer-version">Version 1.0.0</span>

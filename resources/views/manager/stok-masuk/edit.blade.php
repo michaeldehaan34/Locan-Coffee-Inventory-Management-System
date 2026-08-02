@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', ($title ?? 'Edit Stok Masuk') . ' - Ethikopia Stock Management')
+@section('title', ($title ?? 'Edit Stok Masuk') . ' - ' . config('branding.app_name'))
 
 @push('extra_css')
 <style>

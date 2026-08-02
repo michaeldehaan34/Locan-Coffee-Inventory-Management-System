@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', 'Dashboard Barista - Ethikopia Stock Management')
+@section('title', 'Dashboard Barista - ' . config('branding.app_name'))
 @section('content')
 <div class="page-container">
     <!-- Header -->

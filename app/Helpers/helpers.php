@@ -54,7 +54,7 @@ if (! function_exists('shift_list')) {
      */
     function shift_list(): array
     {
-        return config('ethikopia.shift_list', []);
+        return config('lotra.shift_list', []);
     }
 }
 

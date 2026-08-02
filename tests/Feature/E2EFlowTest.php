@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Pengujian End-to-End alur lengkap aplikasi Ethikopia Stock System.
+ * Pengujian End-to-End alur lengkap aplikasi LOTRA Coffee Management System.
  *
  * Alur yang disimulasikan:
  *   1. Login sebagai Manager.

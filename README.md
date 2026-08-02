@@ -1,22 +1,11 @@
-# Ethikopia Coffeebay — Sistem Manajemen Stok Bahan Baku
+# LOTRA — Coffee Management System
 
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-^8.2-777BB4?logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-**Ethikopia Coffeebay** adalah sistem manajemen stok bahan baku coffeeshop berbasis web yang dibangun menggunakan Laravel 12. Sistem ini dirancang untuk membantu operasional coffeeshop dalam memonitor dan mengelola persediaan bahan baku secara efisien, akurat, dan real-time.
-
----
-
-## 📖 Tentang Project
-
-Sistem ini dikembangkan untuk menjawab tantangan operasional coffeeshop dalam mengelola stok bahan baku yang beragam. Dengan antarmuka yang intuitif dan pembagian peran yang jelas, sistem memungkinkan:
-
-- ✅ **Manager** memonitor ketersediaan stok secara real-time beserta analisis kebutuhan bahan.
-- ✅ **Barista** melakukan input stok masuk, update stok, dan pencatatan operasional harian.
-- ✅ **Mempermudah** operasional coffeeshop dengan pencatatan digital yang terstruktur.
-- ✅ **Mengurangi** kesalahan pencatatan manual dengan validasi data otomatis dan notifikasi.
+**LOTRA** adalah sistem manajemen stok bahan baku coffeeshop berbasis web yang dibangun menggunakan Laravel 12. Sistem ini dirancang untuk membantu operasional coffeeshop dalam memonitor dan mengelola persediaan bahan baku secara efisien, akurat, dan real-time.
 
 ---
 
@@ -57,7 +46,7 @@ Barista memiliki akses terbatas untuk pencatatan operasional harian:
 
 ---
 
-## 🛠️ Teknologi
+## 🛠️ Technology Stack
 
 | Teknologi | Kegunaan |
 |-----------|----------|
@@ -76,6 +65,88 @@ Barista memiliki akses terbatas untuk pencatatan operasional harian:
 | [Composer](https://getcomposer.org) | Dependency manager PHP |
 | [DomPDF](https://github.com/dompdf/dompdf) | Generate dokumen PDF |
 | [PhpSpreadsheet](https://phpspreadsheet.readthedocs.io) | Generate file Excel (.xlsx) |
+
+---
+
+## 🚀 Installasi
+
+Ikuti langkah-langkah berikut untuk menjalankan project secara lokal:
+
+### Prasyarat
+
+- PHP >= 8.2
+- Composer
+- MySQL / MariaDB
+- Node.js & npm (untuk kompilasi asset)
+
+### Langkah Instalasi
+
+```bash
+# 1. Clone repository
+git clone https://github.com/username/lotra.git
+cd lotra
+
+# 2. Install dependency PHP
+composer install
+
+# 3. Copy file environment
+cp .env.example .env
+
+# 4. Generate application key
+php artisan key:generate
+
+# 5. Konfigurasi database di file .env
+#    DB_DATABASE=lotra
+#    DB_USERNAME=root
+#    DB_PASSWORD=
+
+# 6. Jalankan migrasi dan seeder
+php artisan migrate --seed
+
+# 7. Install dan kompilasi asset frontend
+npm install
+npm run build
+
+# 8. Jalankan development server
+php artisan serve
+```
+
+Akses aplikasi di `http://localhost:8000`.
+
+> **Catatan:** Login menggunakan akun yang telah di-seed. Password default untuk Barista adalah 6 digit terakhir nomor telepon. Untuk Manager, gunakan password yang telah ditentukan saat seeding.
+
+---
+
+## ⚙️ Konfigurasi
+
+Seluruh branding aplikasi terpusat pada file `config/branding.php`:
+
+| Key | Default | Keterangan |
+|-----|---------|------------|
+| `app_name` | `LOTRA` | Nama aplikasi yang tampil pada judul halaman |
+| `company_name` | `LOTRA` | Nama brand/perusahaan |
+| `subtitle` | `Coffee Management System` | Subtitle yang tampil pada sidebar, login, dan footer |
+| `logo` | `static/images/lotra_logo.png` | Path logo utama |
+| `logo_white` | `static/images/lotra_logo.png` | Path logo versi putih (loader) |
+| `favicon` | `favicon.ico` | Path favicon |
+| `primary_color` | `#1E3AFF` | Warna utama tema |
+| `secondary_color` | `#FFFFFF` | Warna sekunder tema |
+| `accent_color` | `#5D79FF` | Warna aksen tema |
+| `background_color` | `#F6F8FF` | Warna latar tema |
+| `hover_color` | `#284BFF` | Warna hover tema |
+
+Ubah nilai pada file tersebut untuk mengganti nama aplikasi, logo, atau warna tema tanpa menyentuh kode tampilan.
+
+---
+
+## 👥 User Roles
+
+Sistem memiliki dua peran pengguna:
+
+| Role | Hak Akses |
+|------|-----------|
+| **Manager** | Akses penuh — dashboard, master data, riwayat, forecast, laporan, pengaturan limit, dan kelola akun barista |
+| **Barista** | Akses terbatas — login, input stok masuk, update stok, input token listrik, dan daily clean |
 
 ---
 
@@ -109,55 +180,6 @@ Barista memiliki akses terbatas untuk pencatatan operasional harian:
 ├── composer.json              # Dependency PHP
 └── package.json               # Dependency frontend
 ```
-
----
-
-## 🚀 Instalasi
-
-Ikuti langkah-langkah berikut untuk menjalankan project secara lokal:
-
-### Prasyarat
-
-- PHP >= 8.2
-- Composer
-- MySQL / MariaDB
-- Node.js & npm (untuk kompilasi asset)
-
-### Langkah Instalasi
-
-```bash
-# 1. Clone repository
-git clone https://github.com/username/ethikopia-coffeebay.git
-cd ethikopia-coffeebay/laravel-app
-
-# 2. Install dependency PHP
-composer install
-
-# 3. Copy file environment
-cp .env.example .env
-
-# 4. Generate application key
-php artisan key:generate
-
-# 5. Konfigurasi database di file .env
-#    DB_DATABASE=ethikopia
-#    DB_USERNAME=root
-#    DB_PASSWORD=
-
-# 6. Jalankan migrasi dan seeder
-php artisan migrate --seed
-
-# 7. Install dan kompilasi asset frontend
-npm install
-npm run build
-
-# 8. Jalankan development server
-php artisan serve
-```
-
-Akses aplikasi di `http://localhost:8000`.
-
-> **Catatan:** Login menggunakan akun yang telah di-seed. Password default untuk Barista adalah 6 digit terakhir nomor telepon. Untuk Manager, gunakan password yang telah ditentukan saat seeding.
 
 ---
 
@@ -203,7 +225,7 @@ Akses aplikasi di `http://localhost:8000`.
 
 ---
 
-## 👨‍💻 Kontributor
+## 🧑‍💻 Developer
 
 Project ini dikembangkan oleh:
 
@@ -221,7 +243,7 @@ Project ini dilisensikan di bawah **MIT License**. Silakan lihat file [LICENSE](
 
 ## 📝 Catatan Pengembangan
 
-Sistem **Ethikopia Coffeebay** dikembangkan sebagai solusi manajemen operasional coffeeshop berbasis web menggunakan framework **Laravel 12**. Fokus utama pengembangan adalah:
+Sistem **LOTRA** dikembangkan sebagai solusi manajemen operasional coffeeshop berbasis web menggunakan framework **Laravel 12**. Fokus utama pengembangan adalah:
 
 - **Kemudahan penggunaan** — antarmuka yang intuitif dengan pembagian peran yang jelas.
 - **Efisiensi operasional** — pencatatan digital yang menggantikan pencatatan manual.

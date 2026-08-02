@@ -1,6 +1,6 @@
 @extends('layouts.role')
 
-@section('title', 'Daily Clean - Ethikopia Stock Management')
+@section('title', 'Daily Clean - ' . config('branding.app_name'))
 
 @section('content')
 <div class="page-container">

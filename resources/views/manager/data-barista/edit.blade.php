@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', $title ?? 'Edit Barista - Ethikopia Stock Management')
+@section('title', $title ?? ('Edit Barista - ' . config('branding.app_name')))
 
 @section('content')
 <div class="page-container">

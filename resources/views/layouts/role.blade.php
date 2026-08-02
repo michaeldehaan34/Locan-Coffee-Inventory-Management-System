@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Ethikopia Stock Management')</title>
+    <title>@yield('title', config('branding.app_name'))</title>
 
-    <link rel="preload" as="image" href="{{ asset('static/img/logo.png') }}">
+    <link rel="preload" as="image" href="{{ asset(config('branding.logo')) }}">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -32,8 +32,8 @@
             <i class="bi bi-list"></i>
         </button>
         <div class="mobile-brand">
-            <img src="{{ asset('static/img/logo.png') }}" alt="Ethikopia Logo">
-            <span class="mobile-title">Ethikopia<span class="mobile-sub">Coffeebay</span></span>
+            <img src="{{ asset(config('branding.logo')) }}" alt="{{ config('branding.company_name') }} Logo">
+            <span class="mobile-title">{{ config('branding.company_name') }}<span class="mobile-sub">{{ config('branding.subtitle') }}</span></span>
         </div>
     </div>
 
@@ -42,7 +42,7 @@
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
     <div class="page-loader" id="pageLoader" aria-hidden="true">
-        <img src="{{ asset('static/img/logo.png') }}" alt="Ethikopia" class="loader-logo">
+        <img src="{{ asset(config('branding.logo_white')) }}" alt="{{ config('branding.company_name') }}" class="loader-logo">
     </div>
 
     <div class="content-area">
