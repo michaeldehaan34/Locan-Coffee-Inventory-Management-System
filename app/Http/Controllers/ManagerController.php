@@ -181,8 +181,7 @@ class ManagerController extends Controller
         foreach ($activeKeys as $kode) {
             $val = trim((string) $request->input($kode, ''));
             if ($val === '') {
-                flash_danger('Semua data stok wajib diisi sebelum disimpan.');
-                return back()->withInput();
+                continue; // Keep existing value when Manager does not change this item.
             }
             if (! is_numeric($val)) {
                 flash_danger("Nilai untuk {$kode} harus berupa angka.");
@@ -255,7 +254,7 @@ class ManagerController extends Controller
             'shift' => $rec->shift,
             'barista' => $rec->barista,
             'photos' => $rec->photos->map(fn ($p) => [
-                'url' => asset('storage/'.$p->filename),
+                'url' => Storage::disk('public')->url($p->filename),
                 'name' => $p->original_name,
             ]),
         ]);
@@ -269,7 +268,7 @@ class ManagerController extends Controller
         $rec = DailyClean::with('photos')->findOrFail($id);
 
         $photos = $rec->photos->map(fn ($p) => [
-            'url' => asset('storage/'.$p->filename),
+            'url' => Storage::disk('public')->url($p->filename),
             'original_name' => $p->original_name,
         ]);
 

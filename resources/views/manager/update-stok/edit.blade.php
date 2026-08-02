@@ -143,7 +143,7 @@
                                                                         <div class="barang-card input-with-unit">
                                                                             <label for="{{ $item['kode'] }}" class="form-label">{{ $item['nama'] }}</label>
                                                                             <input type="text" class="form-control form-control-sm item-input @error($item['kode']) is-invalid @enderror" id="{{ $item['kode'] }}" name="{{ $item['kode'] }}"
-                                                                                value="{{ old($item['kode'], ($default_data[$item['kode']] ?? '')) }}" inputmode="decimal" placeholder="0" required>
+                                                                                value="{{ old($item['kode'], ($default_data[$item['kode']] ?? '')) }}" inputmode="decimal" placeholder="0">
                                                                             <span class="unit-label">{{ $item['satuan'] }}</span>
                                                                             @error($item['kode'])<div class="invalid-feedback">{{ $message }}</div>@enderror
                                                                         </div>
@@ -175,21 +175,20 @@
 <script>
 document.getElementById('updateStokForm').addEventListener('submit', function(e) {
     const itemInputs = document.querySelectorAll('.item-input');
-    let emptyFields = [];
-    itemInputs.forEach(function(input) { if (input.value.trim() === '') { emptyFields.push(input); } });
-    if (emptyFields.length > 0) {
-        e.preventDefault();
-        emptyFields.forEach(function(input) { input.classList.add('is-invalid'); });
-        Swal.fire({ icon: 'warning', title: 'Periksa Kembali', text: 'Semua data stok wajib diisi sebelum disimpan.', confirmButtonColor: '#DC3545', background: '#1F2026', color: '#e4e4e7', borderRadius: '16px', customClass: { popup: 'swal-dark-popup' } });
-        emptyFields[0].focus();
-        return false;
-    }
     let invalidNum = null;
     itemInputs.forEach(function(input) {
         const value = input.value.trim();
-        if (!/^\d+(\.\d+)?$/.test(value)) { input.classList.add('is-invalid'); invalidNum = input; }
+        if (value !== '' && !/^\d+(\.\d+)?$/.test(value)) {
+            input.classList.add('is-invalid');
+            invalidNum = input;
+        }
     });
-    if (invalidNum) { e.preventDefault(); Swal.fire({ icon: 'warning', title: 'Periksa Kembali', text: invalidNum.id.replace(/_/g, ' ').toUpperCase() + ' harus berupa angka.', confirmButtonColor: '#DC3545', background: '#1F2026', color: '#e4e4e7', borderRadius: '16px', customClass: { popup: 'swal-dark-popup' } }); invalidNum.focus(); return false; }
+    if (invalidNum) {
+        e.preventDefault();
+        Swal.fire({ icon: 'warning', title: 'Periksa Kembali', text: invalidNum.id.replace(/_/g, ' ').toUpperCase() + ' harus berupa angka.', confirmButtonColor: '#DC3545', background: '#1F2026', color: '#e4e4e7', borderRadius: '16px', customClass: { popup: 'swal-dark-popup' } });
+        invalidNum.focus();
+        return false;
+    }
 });
 document.querySelectorAll('.item-input').forEach(function(input) {
     input.addEventListener('input', function(e) {
