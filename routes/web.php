@@ -74,7 +74,7 @@ Route::middleware(['session.auth', 'role:barista'])->group(function () {
 
 /*
  * Headbar features.
- * Headbar-only (Coffee Shop Inventory & Dashboard).
+ * Headbar-only (Coffeeshop Inventory & Dashboard).
  */
 Route::middleware(['session.auth', 'role:headbar'])->group(function () {
     Route::prefix('headbar/coffee-shop')->name('headbar.coffee-shop.')->group(function () {
@@ -102,9 +102,9 @@ Route::middleware(['session.auth', 'role:headbar'])->group(function () {
             ->name('update-stok.detail');
         Route::get('/update-stok/edit/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokEdit'])
             ->name('update-stok.edit');
-        Route::post('/update-stok/update/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokUpdate'])
+        Route::put('/update-stok/update/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokUpdate'])
             ->name('update-stok.update');
-        Route::post('/update-stok/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokDestroy'])
+        Route::delete('/update-stok/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokDestroy'])
             ->name('update-stok.delete');
 
         Route::get('/riwayat/daily-clean', [\App\Http\Controllers\HeadbarController::class, 'riwayatDailyClean'])
@@ -113,7 +113,7 @@ Route::middleware(['session.auth', 'role:headbar'])->group(function () {
             ->name('riwayat.daily-clean.detail');
         Route::get('/riwayat/daily-clean/detail-json/{id}', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanDetail'])
             ->name('riwayat.daily-clean.detail-json');
-        Route::post('/riwayat/daily-clean/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanDestroy'])
+        Route::delete('/riwayat/daily-clean/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanDestroy'])
             ->name('riwayat.daily-clean.delete');
         Route::post('/riwayat/daily-clean/hapus-massal', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanBulkDelete'])
             ->name('riwayat.daily-clean.bulk-delete');
@@ -182,7 +182,7 @@ Route::middleware(['session.auth', 'role:headkitchen'])->group(function () {
  */
 Route::middleware(['session.auth', 'role:manajemen'])->group(function () {
     // ==========================================
-    // DOMAIN COFFEE SHOP (Diakses Manager) - OPERASIONAL (DIMATIKAN)
+    // DOMAIN Coffeeshop (Diakses Manager) - OPERASIONAL (DIMATIKAN)
     // ==========================================
     /*
     Route::prefix('manager/coffee-shop')->name('manager.coffee-shop.')->group(function () {
