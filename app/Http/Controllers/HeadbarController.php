@@ -357,7 +357,7 @@ class HeadbarController extends Controller
             'shift' => $rec->shift,
             'barista' => $rec->barista,
             'photos' => $rec->photos->map(fn ($p) => [
-                'url' => \Illuminate\Support\Facades\Storage::url($p->filename),
+                'url' => asset('storage/' . ltrim($p->filename ?? '', '/')),
                 'name' => $p->original_name,
             ]),
         ]);

@@ -93,8 +93,6 @@
                                             <td>{{ format_kwh($rec['token_listrik_total']) }}</td>
                                             <td>
                                                 <div class="d-flex gap-1">
-                                                        <i class="bi bi-eye me-1"></i>Detail
-                                                    </a>
                                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="openSingleDeleteModal({{ $rec['id'] }}, '{{ $rec['tanggal'] }}', '{{ $rec['shift'] }}', '{{ addslashes($rec['barista']) }}')">
                                                         <i class="bi bi-trash3 me-1"></i>Hapus
                                                     </button>
@@ -154,7 +152,7 @@ function openSingleDeleteModal(id, tanggal, shift, barista) {
         confirmButtonColor: '#DC3545',
         showLoader: true,
         preConfirm: function () {
-            return fetch("{{ url('/manager/riwayat/token-listrik/hapus') }}/" + id, {
+            return fetch("{{ route('headbar.riwayat.token-listrik.delete', 0) }}".replace('/0', '/' + id), {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -182,7 +180,7 @@ function openSingleDeleteModal(id, tanggal, shift, barista) {
                 // Fallback: submit form biasa
                 var form = document.createElement('form');
                 form.method = 'POST';
-                form.action = "{{ url('/manager/riwayat/token-listrik/hapus') }}/" + id;
+                form.action = '{{ route("headbar.riwayat.token-listrik.delete", 0) }}'.replace('/0', '/' + id);
                 var csrf = document.createElement('input');
                 csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = '{{ csrf_token() }}';
                 form.appendChild(csrf);

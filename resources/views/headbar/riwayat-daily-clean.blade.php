@@ -146,7 +146,7 @@ function openPhotos(id) {
     document.getElementById('mShift').textContent = '-';
     document.getElementById('mBarista').textContent = '-';
     document.getElementById('mPhotos').innerHTML = '<div class="col-12 text-center text-muted">Memuat foto...</div>';
-    fetch("{{ url('/manager/riwayat/daily-clean/detail') }}/" + id)
+    fetch("{{ route('headbar.riwayat.daily-clean.detail-json', 0) }}".replace('/0', '/' + id))
         .then(function (r) { return r.json(); })
         .then(function (data) {
             if (data.error) {
@@ -188,7 +188,7 @@ function openSingleDeleteModal(id, tanggal, shift, barista, jumlahFoto) {
         confirmButtonColor: '#DC3545',
         showLoader: true,
         preConfirm: function () {
-            return fetch("{{ url('/manager/riwayat/daily-clean/hapus') }}/" + id, {
+            return fetch("{{ route('headbar.riwayat.daily-clean.delete', 0) }}".replace('/0', '/' + id), {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -216,7 +216,7 @@ function openSingleDeleteModal(id, tanggal, shift, barista, jumlahFoto) {
                 // Fallback: submit form biasa
                 var form = document.createElement('form');
                 form.method = 'POST';
-                form.action = "{{ url('/manager/riwayat/daily-clean/hapus') }}/" + id;
+                form.action = '{{ route("headbar.riwayat.daily-clean.delete", 0) }}'.replace('/0', '/' + id);
                 var csrf = document.createElement('input');
                 csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = '{{ csrf_token() }}';
                 form.appendChild(csrf);
