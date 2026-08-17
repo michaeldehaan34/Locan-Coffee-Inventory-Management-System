@@ -12,26 +12,44 @@ use Illuminate\Support\Facades\Route;
 // - If the user IS logged in, redirect to the dashboard according to their role.
 Route::get('/', function () {
     if (session()->has('username')) {
-        if (session('role') === 'manager') {
+        $role = session('role');
+        if ($role === 'manajemen' || $role === 'manager') {
             return redirect()->route('manager.dashboard');
+        } elseif ($role === 'barista') {
+            return redirect()->route('barista.dashboard');
+        } elseif ($role === 'headbar') {
+            return redirect()->route('headbar.dashboard');
+        } elseif ($role === 'kitchen') {
+            return redirect()->route('kitchen.dashboard');
+        } elseif ($role === 'headkitchen') {
+            return redirect()->route('headkitchen.dashboard');
+        } elseif ($role === 'admin gudang') {
+            return redirect()->route('gudang.dashboard');
         }
-
-        return redirect()->route('barista.dashboard');
+        
+        return redirect()->route('dashboard.coming-soon');
     }
 
     return redirect()->route('login');
 });
 
+Route::get('/dashboard/coming-soon', function () {
+    return view('coming-soon');
+})->name('dashboard.coming-soon')->middleware(['session.auth', 'role:headbar,kitchen,headkitchen,admin gudang']);
+
 /*
  * Barista features.
  * Accessible by Barista and Manager (the Manager role has full access).
  */
-Route::middleware(['session.auth', 'role:barista,manager'])->group(function () {
+Route::middleware(['session.auth', 'role:barista'])->group(function () {
     Route::get('/barista/dashboard', [BaristaController::class, 'dashboard'])
         ->name('barista.dashboard');
 
-    Route::get('/barista/stok-masuk', [BaristaController::class, 'stokMasuk'])
-        ->name('barista.stok-masuk');
+    Route::get('/barista/ambil-bahan-gudang', [BaristaController::class, 'ambilBahanGudang'])
+        ->name('barista.ambil-bahan-gudang');
+
+    Route::post('/barista/ambil-bahan-gudang', [BaristaController::class, 'ambilBahanGudangStore'])
+        ->name('barista.ambil-bahan-gudang.store');
 
     Route::get('/barista/update-stok', [BaristaController::class, 'updateStok'])
         ->name('barista.update-stok');
@@ -47,9 +65,6 @@ Route::middleware(['session.auth', 'role:barista,manager'])->group(function () {
 
     // POST store endpoints (referenced by barista forms; methods exist in
     // BaristaController but were missing from the route definitions).
-    Route::post('/barista/stok-masuk/store', [BaristaController::class, 'stokMasukStore'])
-        ->name('barista.stok-masuk.store');
-
     Route::post('/barista/daily-clean/store', [BaristaController::class, 'dailyCleanStore'])
         ->name('barista.daily-clean.store');
 
@@ -58,27 +73,186 @@ Route::middleware(['session.auth', 'role:barista,manager'])->group(function () {
 });
 
 /*
+ * Headbar features.
+ * Headbar-only (Coffee Shop Inventory & Dashboard).
+ */
+Route::middleware(['session.auth', 'role:headbar'])->group(function () {
+    Route::prefix('headbar/coffee-shop')->name('headbar.coffee-shop.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\HeadbarController::class, 'dashboardCS'])
+            ->name('dashboard');
+
+        // Terima Stok (Dari Gudang)
+        Route::get('/riwayat/terima-stok', [\App\Http\Controllers\HeadbarController::class, 'terimaStokIndex'])
+            ->name('terima-stok.index');
+        Route::get('/terima-stok/detail/{id}', [\App\Http\Controllers\HeadbarController::class, 'terimaStokDetail'])
+            ->name('terima-stok.detail');
+        Route::get('/terima-stok/edit/{id}', [\App\Http\Controllers\HeadbarController::class, 'terimaStokEdit'])
+            ->name('terima-stok.edit');
+        Route::post('/terima-stok/update/{id}', [\App\Http\Controllers\HeadbarController::class, 'terimaStokUpdate'])
+            ->name('terima-stok.update');
+        Route::post('/terima-stok/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'terimaStokDestroy'])
+            ->name('terima-stok.delete');
+    });
+
+    Route::prefix('headbar')->name('headbar.')->group(function () {
+        // Monitoring Barista
+        Route::get('/riwayat/update-stok', [\App\Http\Controllers\HeadbarController::class, 'riwayatUpdateStok'])
+            ->name('riwayat.update-stok');
+        Route::get('/riwayat/update-stok/detail/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokDetail'])
+            ->name('update-stok.detail');
+        Route::get('/update-stok/edit/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokEdit'])
+            ->name('update-stok.edit');
+        Route::post('/update-stok/update/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokUpdate'])
+            ->name('update-stok.update');
+        Route::post('/update-stok/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokDestroy'])
+            ->name('update-stok.delete');
+
+        Route::get('/riwayat/daily-clean', [\App\Http\Controllers\HeadbarController::class, 'riwayatDailyClean'])
+            ->name('riwayat.daily-clean');
+        Route::get('/riwayat/daily-clean/detail/{id}', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanDetailPage'])
+            ->name('riwayat.daily-clean.detail');
+        Route::get('/riwayat/daily-clean/detail-json/{id}', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanDetail'])
+            ->name('riwayat.daily-clean.detail-json');
+        Route::post('/riwayat/daily-clean/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanDestroy'])
+            ->name('riwayat.daily-clean.delete');
+        Route::post('/riwayat/daily-clean/hapus-massal', [\App\Http\Controllers\HeadbarController::class, 'dailyCleanBulkDelete'])
+            ->name('riwayat.daily-clean.bulk-delete');
+
+        Route::get('/riwayat/token-listrik', [\App\Http\Controllers\HeadbarController::class, 'riwayatTokenListrik'])
+            ->name('riwayat.token-listrik');
+        Route::delete('/riwayat/token-listrik/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'tokenListrikDestroy'])
+            ->name('riwayat.token-listrik.delete');
+        Route::post('/riwayat/token-listrik/hapus-massal', [\App\Http\Controllers\HeadbarController::class, 'tokenListrikBulkDelete'])
+            ->name('riwayat.token-listrik.bulk-delete');
+
+        // This acts as a default headbar route
+        Route::get('/dashboard', [\App\Http\Controllers\HeadbarController::class, 'dashboardCS'])
+            ->name('dashboard');
+    });
+});
+
+/*
+ * Kitchen features.
+ */
+Route::middleware(['session.auth', 'role:kitchen'])->group(function () {
+    Route::prefix('kitchen')->name('kitchen.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\KitchenController::class, 'dashboard'])
+            ->name('dashboard');
+
+        Route::get('/ambil-bahan', [\App\Http\Controllers\KitchenController::class, 'ambilBahan'])
+            ->name('ambil-bahan');
+        Route::post('/ambil-bahan/store', [\App\Http\Controllers\KitchenController::class, 'ambilBahanStore'])
+            ->name('ambil-bahan.store');
+
+        Route::get('/update-stok', [\App\Http\Controllers\KitchenController::class, 'updateStok'])
+            ->name('update-stok');
+        Route::post('/update-stok/store', [\App\Http\Controllers\KitchenController::class, 'updateStokStore'])
+            ->name('update-stok.store');
+
+        Route::get('/daily-clean', [\App\Http\Controllers\KitchenController::class, 'dailyClean'])
+            ->name('daily-clean');
+        Route::post('/daily-clean/store', [\App\Http\Controllers\KitchenController::class, 'dailyCleanStore'])
+            ->name('daily-clean.store');
+
+        Route::get('/token-listrik', [\App\Http\Controllers\KitchenController::class, 'tokenListrik'])
+            ->name('token-listrik');
+        Route::post('/token-listrik/store', [\App\Http\Controllers\KitchenController::class, 'tokenListrikStore'])
+            ->name('token-listrik.store');
+    });
+});
+
+/*
+ * Head Kitchen features.
+ */
+Route::middleware(['session.auth', 'role:headkitchen'])->group(function () {
+    Route::prefix('headkitchen')->name('headkitchen.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\HeadKitchenController::class, 'dashboard'])
+            ->name('dashboard');
+
+        Route::get('/kitchen/riwayat/terima-stok', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokIndex'])
+            ->name('terima-stok.index');
+        Route::get('/kitchen/terima-stok/detail/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokDetail'])
+            ->name('terima-stok.detail');
+    });
+});
+
+/*
  * Manager features.
  * Manager-only (full access).
  */
-Route::middleware(['session.auth', 'role:manager'])->group(function () {
-    Route::get('/manager/dashboard', [DashboardController::class, 'dashboard'])
+Route::middleware(['session.auth', 'role:manajemen'])->group(function () {
+    // ==========================================
+    // DOMAIN COFFEE SHOP (Diakses Manager) - OPERASIONAL (DIMATIKAN)
+    // ==========================================
+    /*
+    Route::prefix('manager/coffee-shop')->name('manager.coffee-shop.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\ManagerController::class, 'dashboardCS'])
+            ->name('dashboard');
+
+        // Terima Stok (Dari Gudang)
+        Route::get('/riwayat/terima-stok', [\App\Http\Controllers\ManagerController::class, 'terimaStokIndex'])
+            ->name('terima-stok.index');
+        Route::get('/terima-stok/detail/{id}', [\App\Http\Controllers\ManagerController::class, 'terimaStokDetail'])
+            ->name('terima-stok.detail');
+        Route::get('/terima-stok/edit/{id}', [\App\Http\Controllers\ManagerController::class, 'terimaStokEdit'])
+            ->name('terima-stok.edit');
+        Route::post('/terima-stok/update/{id}', [\App\Http\Controllers\ManagerController::class, 'terimaStokUpdate'])
+            ->name('terima-stok.update');
+        Route::post('/terima-stok/hapus/{id}', [\App\Http\Controllers\ManagerController::class, 'terimaStokDestroy'])
+            ->name('terima-stok.delete');
+    });
+    */
+
+    // Dashboard Manajemen (Multi-Inventory Monitoring)
+    Route::get('/manager/dashboard', [\App\Http\Controllers\ManagerController::class, 'dashboard'])
         ->name('manager.dashboard');
 
-    Route::get('/manager/riwayat/stok-masuk', [StokMasukController::class, 'index'])
-        ->name('manager.stok-masuk.index');
-    Route::get('/manager/stok-masuk/create', [StokMasukController::class, 'create'])
-        ->name('manager.stok-masuk.create');
-    Route::post('/manager/stok-masuk/store', [StokMasukController::class, 'store'])
-        ->name('manager.stok-masuk.store');
-    Route::get('/manager/stok-masuk/detail/{id}', [StokMasukController::class, 'detail'])
-        ->name('manager.stok-masuk.detail');
-    Route::get('/manager/stok-masuk/edit/{id}', [StokMasukController::class, 'edit'])
-        ->name('manager.stok-masuk.edit');
-    Route::post('/manager/stok-masuk/update/{id}', [StokMasukController::class, 'update'])
-        ->name('manager.stok-masuk.update');
-    Route::post('/manager/stok-masuk/hapus/{id}', [StokMasukController::class, 'destroy'])
-        ->name('manager.stok-masuk.delete');
+    // ==========================================
+    // DOMAIN GUDANG - OPERASIONAL (DIMATIKAN)
+    // ==========================================
+    /*
+    Route::prefix('manager/gudang')->name('manager.gudang.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\GudangController::class, 'dashboard'])
+            ->name('dashboard');
+
+        // Stok Masuk Gudang
+        Route::get('/riwayat/stok-masuk', [\App\Http\Controllers\GudangController::class, 'stokMasukIndex'])
+            ->name('stok-masuk.index');
+        Route::get('/stok-masuk/create', [\App\Http\Controllers\GudangController::class, 'stokMasukCreate'])
+            ->name('stok-masuk.create');
+        Route::post('/stok-masuk/store', [\App\Http\Controllers\GudangController::class, 'stokMasukStore'])
+            ->name('stok-masuk.store');
+        Route::get('/stok-masuk/detail/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukDetail'])
+            ->name('stok-masuk.detail');
+        Route::get('/stok-masuk/edit/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukEdit'])
+            ->name('stok-masuk.edit');
+        Route::post('/stok-masuk/update/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukUpdate'])
+            ->name('stok-masuk.update');
+        Route::post('/stok-masuk/hapus/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukDestroy'])
+            ->name('stok-masuk.delete');
+
+        // Kirim Stok (Gudang -> CS)
+        Route::get('/riwayat/kirim-stok', [\App\Http\Controllers\GudangController::class, 'kirimStokIndex'])
+            ->name('kirim-stok.index');
+        Route::get('/kirim-stok/create', [\App\Http\Controllers\GudangController::class, 'kirimStokCreate'])
+            ->name('kirim-stok.create');
+        Route::post('/kirim-stok/store', [\App\Http\Controllers\GudangController::class, 'kirimStokStore'])
+            ->name('kirim-stok.store');
+        Route::get('/kirim-stok/detail/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokDetail'])
+            ->name('kirim-stok.detail');
+        Route::get('/kirim-stok/edit/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokEdit'])
+            ->name('kirim-stok.edit');
+        Route::post('/kirim-stok/update/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokUpdate'])
+            ->name('kirim-stok.update');
+        Route::post('/kirim-stok/hapus/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokDestroy'])
+            ->name('kirim-stok.delete');
+    });
+
+    // Update Stok uses the same controller flow and validation as Barista.
+    Route::get('/manager/update-stok', [\App\Http\Controllers\BaristaController::class, 'updateStok'])
+        ->name('manager.update-stok');
+    Route::post('/manager/update-stok', [\App\Http\Controllers\BaristaController::class, 'updateStokStore'])
+        ->name('manager.update-stok.store');
 
     Route::get('/manager/riwayat/update-stok', [ManagerController::class, 'riwayatUpdateStok'])
         ->name('manager.riwayat.update-stok');
@@ -96,10 +270,12 @@ Route::middleware(['session.auth', 'role:manager'])->group(function () {
 
     Route::get('/manager/riwayat/token-listrik', [ManagerController::class, 'riwayatTokenListrik'])
         ->name('manager.riwayat.token-listrik');
+    */
 
     Route::get('/manager/data-barista', [ManagerController::class, 'dataBarista'])
         ->name('manager.data-barista');
 
+    /*
     Route::get('/manager/master-bahan', [MasterBahanController::class, 'index'])
         ->name('manager.master-bahan');
 
@@ -120,6 +296,7 @@ Route::middleware(['session.auth', 'role:manager'])->group(function () {
 
     Route::get('/manager/forecast', [ManagerController::class, 'forecast'])
         ->name('manager.forecast');
+    */
 
     // Data Barista (CRUD)
     Route::get('/manager/data-barista/create', [ManagerController::class, 'baristaCreate'])
@@ -137,6 +314,7 @@ Route::middleware(['session.auth', 'role:manager'])->group(function () {
     Route::post('/manager/data-barista/hapus/{id}', [ManagerController::class, 'baristaDelete'])
         ->name('manager.data-barista.delete');
 
+    /*
     // Master Bahan (CRUD + toggle + kelompok) - Tahap 6
     Route::get('/manager/master-bahan/kelompok', [MasterBahanController::class, 'kelompok'])
         ->name('manager.master-bahan.kelompok');
@@ -202,8 +380,71 @@ Route::middleware(['session.auth', 'role:manager'])->group(function () {
     // Daily Clean bulk delete
     Route::post('/manager/riwayat/daily-clean/hapus-massal', [ManagerController::class, 'dailyCleanBulkDelete'])
         ->name('manager.riwayat.daily-clean.bulk-delete');
+    */
 
     // Edit Akun Saya (Update Profile)
     Route::post('/manager/profile/update', [ManagerController::class, 'updateProfile'])
         ->name('manager.profile.update');
+});
+
+/*
+ * Admin Gudang features.
+ */
+Route::middleware(['session.auth', 'role:admin gudang'])->group(function () {
+    Route::prefix('gudang')->name('gudang.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\GudangController::class, 'dashboard'])
+            ->name('dashboard');
+
+        // Stok Masuk Gudang
+        Route::get('/riwayat/stok-masuk', [\App\Http\Controllers\GudangController::class, 'stokMasukIndex'])
+            ->name('stok-masuk.index');
+        Route::get('/stok-masuk/create', [\App\Http\Controllers\GudangController::class, 'stokMasukCreate'])
+            ->name('stok-masuk.create');
+        Route::post('/stok-masuk/store', [\App\Http\Controllers\GudangController::class, 'stokMasukStore'])
+            ->name('stok-masuk.store');
+        Route::get('/stok-masuk/detail/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukDetail'])
+            ->name('stok-masuk.detail');
+        Route::get('/stok-masuk/edit/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukEdit'])
+            ->name('stok-masuk.edit');
+        Route::post('/stok-masuk/update/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukUpdate'])
+            ->name('stok-masuk.update');
+        Route::post('/stok-masuk/hapus/{id}', [\App\Http\Controllers\GudangController::class, 'stokMasukDestroy'])
+            ->name('stok-masuk.delete');
+
+        // Kirim Stok (Gudang -> CS / Kitchen)
+        Route::get('/riwayat/kirim-stok', [\App\Http\Controllers\GudangController::class, 'kirimStokIndex'])
+            ->name('kirim-stok.index');
+        Route::get('/kirim-stok/create', [\App\Http\Controllers\GudangController::class, 'kirimStokCreate'])
+            ->name('kirim-stok.create');
+        Route::post('/kirim-stok/store', [\App\Http\Controllers\GudangController::class, 'kirimStokStore'])
+            ->name('kirim-stok.store');
+        Route::get('/kirim-stok/detail/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokDetail'])
+            ->name('kirim-stok.detail');
+        Route::get('/kirim-stok/edit/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokEdit'])
+            ->name('kirim-stok.edit');
+        Route::post('/kirim-stok/update/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokUpdate'])
+            ->name('kirim-stok.update');
+        Route::post('/kirim-stok/hapus/{id}', [\App\Http\Controllers\GudangController::class, 'kirimStokDestroy'])
+            ->name('kirim-stok.delete');
+
+        // Master Bahan (CRUD + toggle + kelompok)
+        Route::get('/master-bahan', [\App\Http\Controllers\MasterBahanController::class, 'index'])
+            ->name('master-bahan');
+        Route::get('/master-bahan/create', [\App\Http\Controllers\MasterBahanController::class, 'create'])
+            ->name('master-bahan.create');
+        Route::get('/master-bahan/detail/{id}', [\App\Http\Controllers\MasterBahanController::class, 'detail'])
+            ->name('master-bahan.detail');
+        Route::get('/master-bahan/edit/{id}', [\App\Http\Controllers\MasterBahanController::class, 'edit'])
+            ->name('master-bahan.edit');
+        Route::get('/master-bahan/kelompok', [\App\Http\Controllers\MasterBahanController::class, 'kelompok'])
+            ->name('master-bahan.kelompok');
+        Route::post('/master-bahan/tambah', [\App\Http\Controllers\MasterBahanController::class, 'store'])
+            ->name('master-bahan.add');
+        Route::post('/master-bahan/edit/{id}', [\App\Http\Controllers\MasterBahanController::class, 'update'])
+            ->name('master-bahan.update');
+        Route::post('/master-bahan/hapus/{id}', [\App\Http\Controllers\MasterBahanController::class, 'destroy'])
+            ->name('master-bahan.delete');
+        Route::post('/master-bahan/status/{id}', [\App\Http\Controllers\MasterBahanController::class, 'toggle'])
+            ->name('master-bahan.toggle');
+    });
 });
