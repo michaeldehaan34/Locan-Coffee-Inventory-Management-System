@@ -166,8 +166,8 @@ function openPhotos(id) {
                 var col = document.createElement('div');
                 col.className = 'col-6 col-md-4';
                 col.innerHTML =
-                    '<a href="' + p.url + '" target="_blank"><img src="' + p.url + '" class="img-fluid rounded border" style="object-fit:cover;height:160px;width:100%;" alt="' + p.name + '"></a>' +
-                    '<div class="small text-muted text-truncate mt-1">' + p.name + '</div>';
+                    '<a href="' + p.url + '" target="_blank"><img src="' + p.url + '" class="img-fluid rounded border" style="object-fit:cover;height:160px;width:100%;" alt="' + p.original_name + '"></a>' +
+                    '<div class="small text-muted text-truncate mt-1">' + p.original_name + '</div>';
                 box.appendChild(col);
             });
         })
