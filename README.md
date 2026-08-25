@@ -5,7 +5,7 @@
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-**Locan** adalah sistem manajemen inventaris dan stok terintegrasi berbasis web yang dibangun menggunakan Laravel 12. Sistem ini dirancang untuk memfasilitasi operasional secara efisien dari hulu ke hilir, mencakup manajemen gudang (Warehouse), area Barista (Coffeeshop), dan Kitchen. Sistem ini menerapkan konsep *multi-role* dan pelacakan riwayat (history tracking) untuk menjaga akurasi data.
+**Locan — Inventory Management System** adalah sistem manajemen inventaris dan stok terintegrasi berbasis web yang dibangun menggunakan Laravel 12. Sistem ini dirancang untuk memfasilitasi operasional secara efisien dari hulu ke hilir, mencakup manajemen gudang (Warehouse), area Barista (Coffeeshop), dan Kitchen. Sistem ini menerapkan konsep *multi-role* dan pelacakan riwayat (history tracking) untuk menjaga akurasi data.
 
 ---
 
