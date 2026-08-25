@@ -64,11 +64,11 @@ if (! function_exists('is_valid_shift')) {
      */
     function is_valid_shift(?string $shift): bool
     {
-        if ($shift === null) {
+        if ($shift === null || trim($shift) === '') {
             return false;
         }
 
-        return in_array($shift, shift_list(), true);
+        return true;
     }
 }
 

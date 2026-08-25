@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Bahan;
 use App\Models\StokMasuk;
 use App\Models\UpdateStok;
+use App\Models\GudangKirimStok;
+use App\Models\BahanLimit;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -26,21 +28,22 @@ class StockAnalytics
     /**
      * Map kode bahan aktif -> [limit_habis, limit_tipis] (dari relasi bahan_limit).
      *
-     * Menggunakan relasi Eloquent Bahan::limit() (eager-loaded) sebagai
-     * pengganti raw DB join.
+     * @param string $inventoryType 'gudang' atau 'coffee_shop'
      */
-    public static function limitMap(): array
+    public static function limitMap(string $inventoryType = 'coffee_shop'): array
     {
-        $bahanList = Bahan::with('limit')
-            ->where('is_active', 1)
+        $bahanList = Bahan::where('is_active', 1)
             ->select('id', 'kode')
             ->get();
 
+        $limits = BahanLimit::where('inventory_type', $inventoryType)->get()->keyBy('bahan_id');
+
         $map = [];
         foreach ($bahanList as $b) {
+            $lim = $limits->get($b->id);
             $map[$b->kode] = [
-                $b->limit?->limit_habis ?? self::DEFAULT_LIMIT_HABIS,
-                $b->limit?->limit_tipis ?? self::DEFAULT_LIMIT_TIPIS,
+                $lim ? $lim->limit_habis : self::DEFAULT_LIMIT_HABIS,
+                $lim ? $lim->limit_tipis : self::DEFAULT_LIMIT_TIPIS,
             ];
         }
 
@@ -50,9 +53,9 @@ class StockAnalytics
     /**
      * Map kode bahan aktif -> nama bahan (dari Master Barang).
      */
-    public static function keyToLabel(): array
+    public static function keyToLabel(string $inventoryType = null): array
     {
-        $labels = Bahan::activeItems();
+        $labels = Bahan::activeItems($inventoryType);
         $keyToLabel = [];
         foreach ($labels as $l) {
             $keyToLabel[$l['kode']] = $l['nama'];
@@ -64,9 +67,9 @@ class StockAnalytics
     /**
      * Map kode bahan aktif -> record bahan lengkap (dari Master Barang).
      */
-    public static function activeMap(): array
+    public static function activeMap(string $inventoryType = null): array
     {
-        $bahanMap = Bahan::activeItems();
+        $bahanMap = Bahan::activeItems($inventoryType);
         $map = [];
         foreach ($bahanMap as $b) {
             $map[$b['kode']] = $b;
@@ -90,9 +93,9 @@ class StockAnalytics
      *
      * @return array<int, string>
      */
-    public static function existingUpdateStokKeys(): array
+    public static function existingUpdateStokKeys(string $inventoryType = null): array
     {
-        $active = Bahan::activeKeys();
+        $active = Bahan::activeKeys($inventoryType);
         if (empty($active)) {
             return [];
         }
@@ -105,15 +108,15 @@ class StockAnalytics
         return array_values(array_intersect($active, $bahanCols));
     }
 
-    public static function readUpdateStok(): array
+    public static function readUpdateStok(string $inventoryType = 'coffee_shop'): array
     {
-        $keys = self::existingUpdateStokKeys();
+        $keys = self::existingUpdateStokKeys($inventoryType);
         if (empty($keys)) {
             return ['has_data' => false, 'item_keys' => [], 'rows' => [], 'last_row' => null];
         }
 
-        $select = array_merge(['id', 'tanggal', 'shift', 'barista'], $keys);
-        $rawRows = UpdateStok::query()->select($select)->orderBy('tanggal')->orderBy('id')->get();
+        $select = array_merge(['id', 'tanggal', 'shift', 'barista', 'barista_id', 'created_at'], $keys);
+        $rawRows = UpdateStok::query()->with('user')->where('inventory_type', $inventoryType)->select($select)->orderBy('tanggal')->orderBy('id')->get();
 
         $rows = [];
         foreach ($rawRows as $rec) {
@@ -121,25 +124,33 @@ class StockAnalytics
             foreach ($keys as $k) {
                 $values[$k] = $rec->$k;
             }
+            $waktuWib = $rec->created_at ? \Carbon\Carbon::parse($rec->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-';
             $rows[] = [
                 'tanggal' => $rec->tanggal ? $rec->tanggal->format('Y-m-d') : '',
                 'shift' => $rec->shift ?: '-',
-                'barista' => $rec->barista ?: '-',
+                'barista' => $rec->user ? $rec->user->nama_lengkap : ($rec->barista ?: '-'),
+                'barista_role' => $rec->user ? $rec->user->role : '',
+                'waktu_wib' => $waktuWib,
+                'created_at_raw' => $rec->created_at ? $rec->created_at->toDateTimeString() : null,
                 'values' => $values,
             ];
         }
 
-        $lastRaw = UpdateStok::query()->select($select)->orderByDesc('tanggal')->orderByDesc('id')->first();
+        $lastRaw = UpdateStok::query()->with('user')->where('inventory_type', $inventoryType)->select($select)->orderByDesc('tanggal')->orderByDesc('id')->first();
         $lastRow = null;
         if ($lastRaw) {
             $lastValues = [];
             foreach ($keys as $k) {
                 $lastValues[$k] = $lastRaw->$k;
             }
+            $waktuWib = $lastRaw->created_at ? \Carbon\Carbon::parse($lastRaw->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-';
             $lastRow = [
                 'tanggal' => $lastRaw->tanggal ? $lastRaw->tanggal->format('Y-m-d') : '',
                 'shift' => $lastRaw->shift ?: '-',
-                'barista' => $lastRaw->barista ?: '-',
+                'barista' => $lastRaw->user ? $lastRaw->user->nama_lengkap : ($lastRaw->barista ?: '-'),
+                'barista_role' => $lastRaw->user ? $lastRaw->user->role : '',
+                'waktu_wib' => $waktuWib,
+                'created_at_raw' => $lastRaw->created_at ? $lastRaw->created_at->toDateTimeString() : null,
                 'values' => $lastValues,
             ];
         }
@@ -151,6 +162,238 @@ class StockAnalytics
             'last_row' => $lastRow,
         ];
     }
+
+    /**
+     * Menghitung STOK Coffeeshop terkini secara dinamis berdasarkan UpdateStok terakhir 
+     * dan total GudangKirimStok (yang diterima) setelah UpdateStok tersebut.
+     * 
+     * @return array<string, float> Map of kode bahan => global stock
+     */
+    public static function getCoffeeShopStockMap(): array
+    {
+        $keys = self::existingUpdateStokKeys('coffee_shop');
+        $kodeToId = [];
+        foreach (Bahan::activeItems('coffee_shop') as $b) {
+            $kodeToId[$b['kode']] = $b['id'];
+        }
+
+        $result = [];
+
+        // OPTIMASI: 1 Query untuk mendapatkan seluruh riwayat UpdateStok (memori)
+        $allUpdateStok = UpdateStok::where('inventory_type', 'coffee_shop')->orderByDesc('tanggal')->orderByDesc('id')->get();
+
+        // OPTIMASI: 1 Query untuk mendapatkan seluruh transaksi kirim stok yang diterima
+        $acceptedTransfers = \App\Models\GudangKirimStokItem::select('gudang_kirim_stok_items.bahan_id', 'gudang_kirim_stok_items.jumlah', \Illuminate\Support\Facades\DB::raw('COALESCE(gudang_kirim_stok.received_at, gudang_kirim_stok.updated_at) as tx_updated_at'))
+            ->join('gudang_kirim_stok', 'gudang_kirim_stok.id', '=', 'gudang_kirim_stok_items.gudang_kirim_stok_id')
+            ->where('gudang_kirim_stok.status', 'diterima')
+            ->where('gudang_kirim_stok.tujuan', 'coffee_shop')
+            ->get();
+
+        // OPTIMASI: 1 Query untuk mendapatkan seluruh transaksi ambil bahan gudang
+        $ambilBahanTransfers = \App\Models\AmbilBahanGudangItem::select('ambil_bahan_gudang_items.bahan_id', 'ambil_bahan_gudang_items.jumlah', 'ambil_bahan_gudang.created_at as tx_updated_at')
+            ->join('ambil_bahan_gudang', 'ambil_bahan_gudang.id', '=', 'ambil_bahan_gudang_items.ambil_bahan_gudang_id')
+            ->where('ambil_bahan_gudang.inventory_type', 'coffee_shop')
+            ->get();
+
+        foreach ($keys as $k) {
+            $bahanId = $kodeToId[$k] ?? null;
+            if (!$bahanId) continue;
+
+            $lastUpdate = $allUpdateStok->first(function ($item) use ($k) {
+                return $item->{$k} !== null && $item->{$k} !== '';
+            });
+            
+            $baseStock = 0.0;
+            $t = null;
+            if ($lastUpdate) {
+                $baseStock = self::toFloat($lastUpdate->{$k}) ?? 0.0;
+                $t = $lastUpdate->created_at;
+            }
+
+            $addedStock = 0.0;
+            $tString = null;
+            if ($t) {
+                $tString = $t instanceof \Carbon\Carbon ? $t->format('Y-m-d H:i:s') : (string)$t;
+            }
+
+            foreach ($acceptedTransfers as $transfer) {
+                if ($transfer->bahan_id == $bahanId) {
+                    if ($tString) {
+                        $txTime = $transfer->tx_updated_at instanceof \Carbon\Carbon 
+                                    ? $transfer->tx_updated_at->format('Y-m-d H:i:s') 
+                                    : (string)$transfer->tx_updated_at;
+                        if ($txTime > $tString) {
+                            $addedStock += (float) $transfer->jumlah;
+                        }
+                    } else {
+                        $addedStock += (float) $transfer->jumlah;
+                    }
+                }
+            }
+
+            foreach ($ambilBahanTransfers as $transfer) {
+                if ($transfer->bahan_id == $bahanId) {
+                    if ($tString) {
+                        $txTime = $transfer->tx_updated_at instanceof \Carbon\Carbon 
+                                    ? $transfer->tx_updated_at->format('Y-m-d H:i:s') 
+                                    : (string)$transfer->tx_updated_at;
+                        if ($txTime > $tString) {
+                            $addedStock += (float) $transfer->jumlah;
+                        }
+                    } else {
+                        $addedStock += (float) $transfer->jumlah;
+                    }
+                }
+            }
+
+            $result[$k] = $baseStock + $addedStock;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Menghitung STOK KITCHEN terkini secara dinamis berdasarkan UpdateStok terakhir
+     * dan transaksi Ambil Bahan Gudang untuk Kitchen.
+     * 
+     * @return array<string, float> Map of kode bahan => global stock
+     */
+    public static function getKitchenStockMap(): array
+    {
+        $keys = self::existingUpdateStokKeys('kitchen');
+        $kodeToId = [];
+        foreach (Bahan::activeItems('kitchen') as $b) {
+            $kodeToId[$b['kode']] = $b['id'];
+        }
+
+        $result = [];
+
+        $allUpdateStok = UpdateStok::where('inventory_type', 'kitchen')
+            ->orderByDesc('tanggal')->orderByDesc('id')->get();
+
+        $ambilBahanTransfers = \App\Models\AmbilBahanGudangItem::select('ambil_bahan_gudang_items.bahan_id', 'ambil_bahan_gudang_items.jumlah', 'ambil_bahan_gudang.created_at as tx_updated_at')
+            ->join('ambil_bahan_gudang', 'ambil_bahan_gudang.id', '=', 'ambil_bahan_gudang_items.ambil_bahan_gudang_id')
+            ->where('ambil_bahan_gudang.inventory_type', 'kitchen')
+            ->get();
+
+        $acceptedKitchenTransfers = \App\Models\GudangKirimStokItem::select('gudang_kirim_stok_items.bahan_id', 'gudang_kirim_stok_items.jumlah', \Illuminate\Support\Facades\DB::raw('COALESCE(gudang_kirim_stok.received_at, gudang_kirim_stok.updated_at) as tx_updated_at'))
+            ->join('gudang_kirim_stok', 'gudang_kirim_stok.id', '=', 'gudang_kirim_stok_items.gudang_kirim_stok_id')
+            ->where('gudang_kirim_stok.status', 'diterima')
+            ->where('gudang_kirim_stok.tujuan', 'kitchen')
+            ->get();
+
+        foreach ($keys as $k) {
+            $bahanId = $kodeToId[$k] ?? null;
+            if (!$bahanId) continue;
+
+            $lastUpdate = $allUpdateStok->first(function ($item) use ($k) {
+                return $item->{$k} !== null && $item->{$k} !== '';
+            });
+            
+            $baseStock = 0.0;
+            $t = null;
+            if ($lastUpdate) {
+                $baseStock = self::toFloat($lastUpdate->{$k}) ?? 0.0;
+                $t = $lastUpdate->created_at;
+            }
+
+            $addedStock = 0.0;
+            $tString = null;
+            if ($t) {
+                $tString = $t instanceof \Carbon\Carbon ? $t->format('Y-m-d H:i:s') : (string)$t;
+            }
+
+            foreach ($ambilBahanTransfers as $transfer) {
+                if ($transfer->bahan_id == $bahanId) {
+                    if ($tString) {
+                        $txTime = $transfer->tx_updated_at instanceof \Carbon\Carbon 
+                                    ? $transfer->tx_updated_at->format('Y-m-d H:i:s') 
+                                    : (string)$transfer->tx_updated_at;
+                        if ($txTime > $tString) {
+                            $addedStock += (float) $transfer->jumlah;
+                        }
+                    } else {
+                        $addedStock += (float) $transfer->jumlah;
+                    }
+                }
+            }
+
+            foreach ($acceptedKitchenTransfers as $transfer) {
+                if ($transfer->bahan_id == $bahanId) {
+                    if ($tString) {
+                        $txTime = $transfer->tx_updated_at instanceof \Carbon\Carbon 
+                                    ? $transfer->tx_updated_at->format('Y-m-d H:i:s') 
+                                    : (string)$transfer->tx_updated_at;
+                        if ($txTime > $tString) {
+                            $addedStock += (float) $transfer->jumlah;
+                        }
+                    } else {
+                        $addedStock += (float) $transfer->jumlah;
+                    }
+                }
+            }
+
+            $result[$k] = $baseStock + $addedStock;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Menghitung STOK GUDANG terkini secara dinamis.
+     * Saldo = Total Stok Masuk (supplier) - Total Kirim Stok (Gudang -> CS).
+     * Kirim stok yang berstatus 'pending' maupun 'diterima' tetap memotong stok gudang.
+     */
+    public static function getGudangStockMap(): array
+    {
+        $keys = self::existingUpdateStokKeys();
+        $kodeToId = [];
+        foreach (Bahan::activeItems() as $b) {
+            $kodeToId[$b['kode']] = $b['id'];
+        }
+
+        $result = [];
+
+        // OPTIMASI: 1 Query total barang keluar
+        $activeIds = array_filter($kodeToId);
+        $totalOuts = [];
+        $totalAmbil = [];
+        if (!empty($activeIds)) {
+            $totalOuts = \App\Models\GudangKirimStokItem::whereIn('bahan_id', $activeIds)
+                ->select('bahan_id', \Illuminate\Support\Facades\DB::raw('SUM(jumlah) as total_out'))
+                ->groupBy('bahan_id')
+                ->pluck('total_out', 'bahan_id')
+                ->toArray();
+
+            $totalAmbil = \App\Models\AmbilBahanGudangItem::whereIn('bahan_id', $activeIds)
+                ->select('bahan_id', \Illuminate\Support\Facades\DB::raw('SUM(jumlah) as total_ambil'))
+                ->groupBy('bahan_id')
+                ->pluck('total_ambil', 'bahan_id')
+                ->toArray();
+        }
+
+        // OPTIMASI: 1 Query baca semua StokMasuk
+        $allStokMasuk = empty($keys) ? collect() : StokMasuk::select($keys)->get();
+
+        foreach ($keys as $k) {
+            $bahanId = $kodeToId[$k] ?? null;
+            if (!$bahanId) continue;
+
+            $totalIn = $allStokMasuk->filter(function($item) use ($k) {
+                return $item->{$k} !== null && $item->{$k} !== '';
+            })->sum(function($item) use ($k) {
+                return (float) $item->{$k};
+            });
+
+            $totalOut = (float) ($totalOuts[$bahanId] ?? 0);
+            $totalA = (float) ($totalAmbil[$bahanId] ?? 0);
+
+            $result[$k] = $totalIn - $totalOut - $totalA;
+        }
+
+        return $result;
+    }
+
 
     public static function classify($val, float $limitHabis, float $limitTipis): string
     {
@@ -203,14 +446,14 @@ class StockAnalytics
     /**
      * Ringkasan status stok dari stok terakhir (Dashboard Analytics).
      */
-    public static function summaryStats(array $data): array
+    public static function summaryStats(array $data, string $inventoryType = 'coffee_shop'): array
     {
         $summary = ['aman' => 0, 'tipis' => 0, 'habis' => 0];
         $last = $data['last_row'] ?? null;
         if (! $last) {
             return $summary;
         }
-        $limitMap = self::limitMap();
+        $limitMap = self::limitMap($inventoryType);
         foreach ($data['item_keys'] as $key) {
             [$lh, $lt] = $limitMap[$key] ?? [self::DEFAULT_LIMIT_HABIS, self::DEFAULT_LIMIT_TIPIS];
             $summary[self::classify($last['values'][$key] ?? null, $lh, $lt)]++;
@@ -219,10 +462,10 @@ class StockAnalytics
         return $summary;
     }
 
-    public static function topHabis(array $data, ?array $limitMap = null, ?array $keyToLabel = null, int $limit = 10): array
+    public static function topHabis(array $data, ?array $limitMap = null, ?array $keyToLabel = null, int $limit = 10, string $inventoryType = 'coffee_shop'): array
     {
         $counter = [];
-        $limitMap = $limitMap ?? self::limitMap();
+        $limitMap = $limitMap ?? self::limitMap($inventoryType);
         $keyToLabel = $keyToLabel ?? self::keyToLabel();
         foreach ($data['rows'] as $row) {
             foreach ($data['item_keys'] as $key) {
@@ -248,10 +491,10 @@ class StockAnalytics
         return $result;
     }
 
-    public static function topTipis(array $data, ?array $limitMap = null, ?array $keyToLabel = null, int $limit = 10): array
+    public static function topTipis(array $data, ?array $limitMap = null, ?array $keyToLabel = null, int $limit = 10, string $inventoryType = 'coffee_shop'): array
     {
         $counter = [];
-        $limitMap = $limitMap ?? self::limitMap();
+        $limitMap = $limitMap ?? self::limitMap($inventoryType);
         $keyToLabel = $keyToLabel ?? self::keyToLabel();
         foreach ($data['rows'] as $row) {
             foreach ($data['item_keys'] as $key) {
@@ -299,63 +542,76 @@ class StockAnalytics
     }
 
     /**
-     * Ringkas seluruh metrik Dashboard Analytics dalam SATU pass
-     * (summary + top habis + top tipis + aktivitas barista) dengan hanya
-     * SATU pemanggilan limitMap() dan SATU activeItems().
-     * Menggantikan panggilan berulang di DashboardController yang sebelumnya
-     * men-query DB berulang kali (limitMap 4x, activeItems 2x).
+     * Ringkas seluruh metrik Dashboard Analytics.
+     * Mendukung pemisahan Gudang dan Coffeeshop.
+     *
+     * @param string $inventoryType 'gudang' atau 'coffee_shop'
      */
-    public static function dashboard(): array
+    public static function dashboard(string $inventoryType = 'coffee_shop'): array
     {
-        $data = self::readUpdateStok();
-
-        if (! $data['has_data']) {
-            return [
-                'has_data' => false,
-                'bahan_aman' => 0,
-                'bahan_tipis' => 0,
-                'bahan_habis' => 0,
-                'top_barang_habis' => [],
-                'top_barang_tipis' => [],
-                'top_aktivitas_barista' => [],
-            ];
-        }
-
-        $limitMap = self::limitMap();
-        $labels = Bahan::activeItems();
+        $limitMap = self::limitMap($inventoryType);
+        $labels = Bahan::activeItems($inventoryType);
         $keyToLabel = [];
         foreach ($labels as $l) {
             $keyToLabel[$l['kode']] = $l['nama'];
         }
 
-        // Ringkasan dari stok terakhir.
         $summary = ['aman' => 0, 'tipis' => 0, 'habis' => 0];
-        $last = $data['last_row'];
-        if ($last) {
-            foreach ($data['item_keys'] as $key) {
-                [$lh, $lt] = $limitMap[$key] ?? [self::DEFAULT_LIMIT_HABIS, self::DEFAULT_LIMIT_TIPIS];
-                $summary[self::classify($last['values'][$key] ?? null, $lh, $lt)]++;
-            }
+        
+        if ($inventoryType === 'gudang') {
+            $stockMap = self::getGudangStockMap();
+            $hasData = count($stockMap) > 0;
+            $rows = [];
+        } elseif ($inventoryType === 'kitchen') {
+            $stockMap = self::getKitchenStockMap();
+            $data = self::readUpdateStok('kitchen');
+            $hasData = $data['has_data'];
+            $rows = $hasData ? $data['rows'] : [];
+        } else {
+            $stockMap = self::getCoffeeShopStockMap();
+            $data = self::readUpdateStok('coffee_shop');
+            $hasData = $data['has_data'];
+            $rows = $hasData ? $data['rows'] : [];
         }
 
-        // Satu pass untuk seluruh counter.
+        $stockFormatted = [];
+        $keys = self::existingUpdateStokKeys($inventoryType);
+        foreach ($keys as $key) {
+            $gStock = $stockMap[$key] ?? 0.0;
+            [$lh, $lt] = $limitMap[$key] ?? [self::DEFAULT_LIMIT_HABIS, self::DEFAULT_LIMIT_TIPIS];
+            $status = self::classify($gStock, $lh, $lt);
+            $summary[$status]++;
+            
+            $label = $keyToLabel[$key] ?? $key;
+            $stockFormatted[] = [
+                'kode' => $key,
+                'nama' => $label,
+                'stok' => self::formatNumber($gStock),
+                'satuan' => (Bahan::where('kode', $key)->first()->satuan ?? 'pcs'),
+                'status' => $status
+            ];
+        }
+
         $habisCounter = [];
         $tipisCounter = [];
         $aktivitasCounter = [];
-        foreach ($data['rows'] as $row) {
-            foreach ($data['item_keys'] as $key) {
-                [$lh, $lt] = $limitMap[$key] ?? [self::DEFAULT_LIMIT_HABIS, self::DEFAULT_LIMIT_TIPIS];
-                $status = self::classify($row['values'][$key] ?? null, $lh, $lt);
-                $label = $keyToLabel[$key] ?? $key;
-                if ($status === 'habis') {
-                    $habisCounter[$label] = ($habisCounter[$label] ?? 0) + 1;
-                } elseif ($status === 'tipis') {
-                    $tipisCounter[$label] = ($tipisCounter[$label] ?? 0) + 1;
+        
+        if (in_array($inventoryType, ['coffee_shop', 'kitchen']) && $hasData) {
+            foreach ($rows as $row) {
+                foreach ($keys as $key) {
+                    [$lh, $lt] = $limitMap[$key] ?? [self::DEFAULT_LIMIT_HABIS, self::DEFAULT_LIMIT_TIPIS];
+                    $status = self::classify($row['values'][$key] ?? null, $lh, $lt);
+                    $label = $keyToLabel[$key] ?? $key;
+                    if ($status === 'habis') {
+                        $habisCounter[$label] = ($habisCounter[$label] ?? 0) + 1;
+                    } elseif ($status === 'tipis') {
+                        $tipisCounter[$label] = ($tipisCounter[$label] ?? 0) + 1;
+                    }
                 }
-            }
-            $nama = trim((string) $row['barista']);
-            if ($nama !== '') {
-                $aktivitasCounter[$nama] = ($aktivitasCounter[$nama] ?? 0) + 1;
+                $nama = trim((string) $row['barista']);
+                if ($nama !== '') {
+                    $aktivitasCounter[$nama] = ($aktivitasCounter[$nama] ?? 0) + 1;
+                }
             }
         }
 
@@ -385,23 +641,24 @@ class StockAnalytics
         }
 
         return [
-            'has_data' => true,
+            'has_data' => $hasData,
             'bahan_aman' => $summary['aman'],
             'bahan_tipis' => $summary['tipis'],
             'bahan_habis' => $summary['habis'],
             'top_barang_habis' => $topHabis,
             'top_barang_tipis' => $topTipis,
             'top_aktivitas_barista' => $topAktivitas,
+            'global_stock' => $stockFormatted,
         ];
     }
 
     /**
      * Forecast kebutuhan & estimasi pembelian untuk periode terpilih.
      */
-    public static function forecast(?string $tanggalAwal = null, ?string $tanggalAkhir = null, ?array $data = null, ?array $limitMap = null): array
+    public static function forecast(?string $tanggalAwal = null, ?string $tanggalAkhir = null, ?array $data = null, ?array $limitMap = null, string $inventoryType = 'coffee_shop'): array
     {
-        $data = $data ?? self::readUpdateStok();
-        $limitMap = $limitMap ?? self::limitMap();
+        $data = $data ?? self::readUpdateStok($inventoryType);
+        $limitMap = $limitMap ?? self::limitMap($inventoryType);
         $result = [
             'has_data' => $data['has_data'],
             'tanggal_awal' => $tanggalAwal,
@@ -547,7 +804,7 @@ class StockAnalytics
     {
         $keys = Bahan::activeKeys();
 
-        $q = StokMasuk::query()->select(array_merge(['id', 'tanggal', 'shift', 'barista', 'created_at'], $keys));
+        $q = StokMasuk::query()->with('user')->select(array_merge(['id', 'tanggal', 'shift', 'barista', 'barista_id', 'created_at'], $keys));
         if ($tglAwal) {
             $q->where('tanggal', '>=', $tglAwal);
         }
@@ -580,14 +837,17 @@ class StockAnalytics
                 ];
             }
             $tanggalIso = $rec->tanggal ? $rec->tanggal->format('Y-m-d') : '';
-            $jam = $rec->created_at ? $rec->created_at->format('H:i') : '-';
+            $jam = $rec->created_at ? $rec->created_at->timezone('Asia/Jakarta')->format('H:i') : '-';
+            $waktuWib = $rec->created_at ? \Carbon\Carbon::parse($rec->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-';
             $transactions[] = [
                 'id' => $rec->id,
                 'tanggal' => $tanggalIso,
                 'tanggal_display' => self::displayDate($tanggalIso),
                 'jam' => $jam,
                 'shift' => $rec->shift ?: '-',
-                'barista' => $rec->barista ?: '-',
+                'barista' => $rec->user ? $rec->user->nama_lengkap : ($rec->barista ?: '-'),
+                'barista_role' => $rec->user ? $rec->user->role : '',
+                'waktu_wib' => $waktuWib,
                 'jumlah_item' => count($items),
                 'items' => $items,
             ];
@@ -662,7 +922,7 @@ class StockAnalytics
     /**
      * Riwayat Update Stok (flat per transaksi) untuk tabel + detail + export.
      */
-    public static function allUpdateStok(?string $barangKeyword = null): array
+    public static function allUpdateStok(?string $barangKeyword = null, ?string $inventoryType = null): array
     {
         $keys = Bahan::activeKeys();
         $bahanMap = Bahan::activeItems();
@@ -671,7 +931,12 @@ class StockAnalytics
             $map[$b['kode']] = $b;
         }
 
-        $q = UpdateStok::query()->select(array_merge(['id', 'tanggal', 'shift', 'barista'], $keys));
+        $q = UpdateStok::query()->with('user')->select(array_merge(['id', 'tanggal', 'shift', 'barista', 'barista_id', 'created_at', 'inventory_type'], $keys));
+        
+        if ($inventoryType) {
+            $q->where('inventory_type', $inventoryType);
+        }
+
         if ($barangKeyword) {
             $q->where(function ($query) use ($keys, $barangKeyword) {
                 foreach ($keys as $k) {
@@ -691,22 +956,28 @@ class StockAnalytics
                 $label = $b['nama'] ?? $k;
                 $isFilled = $rawVal !== null && $rawVal !== '';
                 $status = self::classify($rawVal, self::DEFAULT_LIMIT_HABIS, self::DEFAULT_LIMIT_TIPIS);
-                if ($isFilled) {
+                                if ($isFilled) {
                     $filled++;
                 }
                 $items[] = [
                     'label' => $label,
+                    'kategori' => $b['kategori'] ?? '-',
+                    'kelompok' => $b['kelompok'] ?? '-',
+                    'satuan' => $b['satuan'] ?? '-',
                     'value' => $isFilled ? $rawVal : '-',
                     'status' => $status,
                 ];
             }
             $tanggalIso = $rec->tanggal ? $rec->tanggal->format('Y-m-d') : '';
+            $waktuWib = $rec->created_at ? \Carbon\Carbon::parse($rec->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-';
             $records[] = [
                 'id' => $rec->id,
                 'tanggal' => $tanggalIso,
                 'tanggal_display' => self::displayDate($tanggalIso),
                 'shift' => $rec->shift ?: '-',
-                'barista' => $rec->barista ?: '-',
+                'barista' => $rec->user ? $rec->user->nama_lengkap : ($rec->barista ?: '-'),
+                'barista_role' => $rec->user ? $rec->user->role : '',
+                'waktu_wib' => $waktuWib,
                 'jumlah_item' => $filled,
                 'items' => $items,
             ];

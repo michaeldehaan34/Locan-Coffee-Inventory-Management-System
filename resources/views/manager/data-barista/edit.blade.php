@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', $title ?? ('Edit Barista - ' . config('branding.app_name')))
+@section('title', $title ?? ('Edit Karyawan - ' . config('branding.app_name')))
 
 @section('content')
 <div class="page-container">
@@ -9,7 +9,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h2 class="mb-0">
-                        <i class="bi bi-pencil me-2"></i>Edit Barista
+                        <i class="bi bi-pencil me-2"></i>Edit Karyawan
                     </h2>
                     <a href="{{ route('manager.data-barista') }}" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Kembali
@@ -37,10 +37,15 @@
                             @enderror
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" class="form-control"
-                                   value="{{ $barista->username }}" disabled readonly>
-                            <small class="text-muted">Username tidak dapat diubah.</small>
+                            <label class="form-label">Username <span class="text-danger">*</span></label>
+                            <input type="text" name="username"
+                                   class="form-control @error('username') is-invalid @enderror"
+                                   value="{{ old('username', $barista->username) }}" required
+                                   placeholder="Masukkan username">
+                            <small class="text-muted">Username ini akan digunakan untuk login.</small>
+                            @error('username')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Nomor Telepon <span class="text-danger">*</span></label>
@@ -57,7 +62,11 @@
                             <label class="form-label">Role <span class="text-danger">*</span></label>
                             <select name="role" class="form-select @error('role') is-invalid @enderror" required>
                                 <option value="barista" {{ old('role', $barista->role) == 'barista' ? 'selected' : '' }}>Barista</option>
-                                <option value="manager" {{ old('role', $barista->role) == 'manager' ? 'selected' : '' }}>Manager</option>
+                                <option value="manajemen" {{ old('role', $barista->role) == 'manajemen' ? 'selected' : '' }}>Manajemen</option>
+                                <option value="headbar" {{ old('role', $barista->role) == 'headbar' ? 'selected' : '' }}>Headbar</option>
+                                <option value="kitchen" {{ old('role', $barista->role) == 'kitchen' ? 'selected' : '' }}>Kitchen</option>
+                                <option value="headkitchen" {{ old('role', $barista->role) == 'headkitchen' ? 'selected' : '' }}>Head Kitchen</option>
+                                <option value="admin gudang" {{ old('role', $barista->role) == 'admin gudang' ? 'selected' : '' }}>Admin Gudang</option>
                             </select>
                             @error('role')
                                 <div class="invalid-feedback">{{ $message }}</div>

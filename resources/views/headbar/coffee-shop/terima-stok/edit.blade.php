@@ -43,42 +43,56 @@
                             <small class="text-muted">Kosongkan jika bahan tidak dikirim.</small>
                         </div>
 
-                        <div class="accordion" id="accordionBahan">
-                            @foreach($bahan_tree as $node)
-                                <div class="accordion-item mb-2 border rounded">
-                                    <h2 class="accordion-header" id="heading-{{ Str::slug($node['kategori']) }}">
-                                        <button class="accordion-button collapsed py-2 px-3 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ Str::slug($node['kategori']) }}" aria-expanded="false" aria-controls="collapse-{{ Str::slug($node['kategori']) }}">
-                                            {{ $node['kategori'] }}
-                                            
+                        @php
+                            $kat_icons = [
+                                'Bahan Baku Bar' => 'bi-cup-hot',
+                                'Bahan Baku Kitchen' => 'bi-tools',
+                                'Equipment' => 'bi-hdd-network',
+                            ];
+                        @endphp
+                        <div class="accordion bahan-accordion" id="kategoriAccordion">
+                            @foreach($bahan_tree as $ki => $node)
+                                @php $kat_id = 'kat_'.($ki+1); @endphp
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="head_{{ $kat_id }}">
+                                        <button class="accordion-button{{ $ki > 0 ? ' collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#body_{{ $kat_id }}" aria-expanded="{{ $ki === 0 ? 'true' : 'false' }}" aria-controls="body_{{ $kat_id }}">
+                                            <i class="bi {{ $kat_icons[$node['kategori']] ?? 'bi-box' }} me-2"></i><span>{{ $node['kategori'] }}</span>
                                         </button>
                                     </h2>
-                                    <div id="collapse-{{ Str::slug($node['kategori']) }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ Str::slug($node['kategori']) }}" data-bs-parent="#accordionBahan">
-                                        <div class="accordion-body bg-white pt-2 pb-0">
-                                            @foreach($node['kelompok_list'] as $grp)
-                                                <div class="mb-3 p-3 bg-light rounded border">
-                                                    <h6 class="fw-bold mb-3 border-bottom pb-2">Kelompok: {{ $grp['kelompok'] }}</h6>
-                                                    <div class="row row-cols-1 row-cols-md-2 g-3">
-                                                        @foreach($grp['items'] as $item)
-                                                            <div class="col">
-                                                                <label class="form-label mb-1 text-secondary small d-block">
-                                                                    {{ $item['nama'] }}
-                                                                </label>
-                                                                <div class="input-group input-group-sm">
-                                                                    <input type="number" 
-                                                                           step="0.01" 
-                                                                           min="0" 
-                                                                           class="form-control item-input" 
-                                                                           id="{{ $item['kode'] }}" 
-                                                                           name="{{ $item['kode'] }}"
-                                                                           data-kelompok="{{ Str::slug($node['kategori']) }}"
-                                                                           value="{{ old($item['kode'], $default_data[$item['kode']] ?? '') }}">
-                                                                    <span class="input-group-text text-muted" style="width: 60px; justify-content: center;">{{ $item['satuan'] }}</span>
+                                    <div id="body_{{ $kat_id }}" class="accordion-collapse collapse{{ $ki === 0 ? ' show' : '' }}" aria-labelledby="head_{{ $kat_id }}" data-bs-parent="#kategoriAccordion">
+                                        <div class="accordion-body">
+                                            <div class="accordion kelompok-accordion" id="kel_{{ $kat_id }}">
+                                                @foreach($node['kelompok_list'] as $gi => $grp)
+                                                    @php $kel_id = $kat_id.'_grp_'.($gi+1); @endphp
+                                                    <div class="accordion-item">
+                                                        <h2 class="accordion-header" id="head_{{ $kel_id }}">
+                                                            <button class="accordion-button{{ $gi > 0 ? ' collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#body_{{ $kel_id }}" aria-expanded="{{ $gi === 0 ? 'true' : 'false' }}" aria-controls="body_{{ $kel_id }}">
+                                                                <i class="bi bi-collection me-2"></i><span>{{ $grp['kelompok'] }}</span>
+                                                            </button>
+                                                        </h2>
+                                                        <div id="body_{{ $kel_id }}" class="accordion-collapse collapse{{ $gi === 0 ? ' show' : '' }}" aria-labelledby="head_{{ $kel_id }}" data-bs-parent="#kel_{{ $kat_id }}">
+                                                            <div class="accordion-body">
+                                                                <div class="barang-grid">
+                                                                    @foreach($grp['items'] as $item)
+                                                                        <div class="barang-card input-with-unit">
+                                                                            <label for="{{ $item['kode'] }}" class="form-label">{{ $item['nama'] }}</label>
+                                                                            <input type="number" 
+                                                                                   step="0.01" 
+                                                                                   min="0" 
+                                                                                   class="form-control form-control-sm item-input" 
+                                                                                   id="{{ $item['kode'] }}" 
+                                                                                   name="{{ $item['kode'] }}"
+                                                                                   data-kelompok="{{ Str::slug($node['kategori']) }}"
+                                                                                   value="{{ old($item['kode'], $default_data[$item['kode']] ?? '') }}" placeholder="0">
+                                                                            <span class="unit-label">{{ $item['satuan'] }}</span>
+                                                                        </div>
+                                                                    @endforeach
                                                                 </div>
                                                             </div>
-                                                        @endforeach
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            @endforeach
+                                                @endforeach
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -69,9 +69,9 @@
                                             </div>
                                         </th>
                                         <th style="width: 5%;">No</th>
-                                        <th>Tanggal</th>
+                                        <th>Tanggal Input</th>
                                         <th>Shift</th>
-                                        <th>Barista</th>
+                                        <th>Diinput Oleh</th>
                                         <th>Jumlah Foto</th>
                                         <th style="width: 18%;">Aksi</th>
                                     </tr>
@@ -87,9 +87,17 @@
                                                 </div>
                                             </td>
                                             <td>{{ $no }}</td>
-                                            <td>{{ $rec['tanggal'] }}</td>
+                                            <td>
+                                                <div>{{ $rec['tanggal'] }}</div>
+                                                <small class="text-muted d-block">{{ $rec['waktu_wib'] }}</small>
+                                            </td>
                                             <td>{{ $rec['shift'] }}</td>
-                                            <td>{{ $rec['barista'] }}</td>
+                                            <td>
+                                                <div>{{ $rec['barista'] }}</div>
+                                                @if($rec['barista_role'])
+                                                    <small class="text-muted text-capitalize">{{ $rec['barista_role'] }}</small>
+                                                @endif
+                                            </td>
                                             <td>{{ $rec['jumlah_foto'] }}</td>
                                             <td>
                                                 <div class="d-flex gap-1">

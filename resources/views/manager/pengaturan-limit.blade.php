@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', 'Pengaturan Limit Stok - ' . config('branding.app_name'))
+@section('title', $title . ' - ' . config('branding.app_name'))
 
 @section('content')
 <div class="page-container">
@@ -9,10 +9,10 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h2 class="mb-0">
-                        <i class="bi bi-sliders me-2"></i>Pengaturan Limit Stok
+                        <i class="bi bi-sliders me-2"></i>{{ $title }}
                     </h2>
                     <div>
-                        <a href="{{ route('manager.dashboard') }}" class="btn btn-outline-light btn-sm">
+                        <a href="{{ ($inventory_type ?? 'coffee_shop') === 'gudang' ? route('manager.gudang.dashboard') : route('manager.coffee-shop.dashboard') }}" class="btn btn-outline-light btn-sm">
                             <i class="bi bi-arrow-left me-1"></i>Kembali
                         </a>
                     </div>
@@ -64,7 +64,7 @@
                                         <td>{{ $b->limit_habis }}</td>
                                         <td>{{ $b->limit_tipis }}</td>
                                         <td>
-                                            <a href="{{ route('manager.pengaturan-limit.edit', $b->id) }}" class="btn btn-sm btn-outline-light">
+                                            <a href="{{ route('manager.pengaturan-limit.edit', ['id' => $b->id, 'type' => $inventory_type ?? 'coffee_shop']) }}" class="btn btn-sm btn-outline-light">
                                                 <i class="bi bi-pencil"></i> Atur
                                             </a>
                                         </td>

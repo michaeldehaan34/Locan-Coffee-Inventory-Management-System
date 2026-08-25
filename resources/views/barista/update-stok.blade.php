@@ -2,25 +2,7 @@
 
 @section('title', 'Update Stok - ' . config('branding.app_name'))
 
-@push('extra_css')
-<style>
-    .bahan-accordion .accordion-button { background-color: var(--bg-elevated); color: var(--text-primary); font-weight: 600; box-shadow: none; }
-    .bahan-accordion .accordion-button:not(.collapsed) { background-color: var(--accent-teal-soft); color: var(--accent-teal); }
-    .bahan-accordion .accordion-button:focus { box-shadow: none; border-color: var(--border-hover); }
-    .bahan-accordion .accordion-item { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 0.75rem; overflow: hidden; }
-    .bahan-accordion .accordion-body { background-color: var(--bg-card); }
-    .kelompok-accordion .accordion-button { background-color: var(--bg-card); font-size: 0.95rem; padding-top: 0.6rem; padding-bottom: 0.6rem; }
-    .kelompok-accordion .accordion-button:not(.collapsed) { background-color: var(--accent-indigo-soft); color: var(--accent-indigo); }
-    .kelompok-accordion .accordion-item { background-color: var(--bg-elevated); border: 1px solid var(--border-color); }
-    .barang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
-    .barang-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; transition: border-color var(--transition); }
-    .barang-card:focus-within { border-color: var(--accent-teal); }
-    .barang-card .form-label { color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 0.3rem; }
-    .input-with-unit { position: relative; }
-    .input-with-unit .form-control { padding-right: 3rem; background-color: var(--bg-main); border-color: var(--border-color); color: var(--text-primary); }
-    .input-with-unit .unit-label { position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--text-muted); pointer-events: none; }
-</style>
-@endpush
+
 
 @section('content')
 <div class="page-container">
@@ -51,24 +33,23 @@
                         </div>
                     </div>
 
-                    <form method="POST" action="{{ route('barista.update-stok.store') }}" id="updateStokForm">
+                                        <form method="POST" action="{{ session('role') === 'manajemen' ? route('manager.update-stok.store') : route('barista.update-stok.store') }}" id="updateStokForm">
+
+
                         @csrf
                         <div class="row mb-4">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-{{ session('role') === 'manajemen' ? '6' : '4' }} mb-3">
                                 <label for="tanggal" class="form-label"><i class="bi bi-calendar me-1"></i>Tanggal <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" id="tanggal" name="tanggal" value="{{ old('tanggal', date('Y-m-d')) }}" required>
                             </div>
+                            @if (session('role') !== 'manajemen')
                             <div class="col-md-4 mb-3">
                                 <label for="shift" class="form-label"><i class="bi bi-clock me-1"></i>Shift <span class="text-danger">*</span></label>
-                                <select class="form-select" id="shift" name="shift" required>
-                                    <option value="">Pilih Shift</option>
-                                    @foreach ($shift_list as $s)
-                                        <option value="{{ $s }}" {{ old('shift') == $s ? 'selected' : '' }}>{{ $s }}</option>
-                                    @endforeach
-                                </select>
+                                <input type="text" class="form-control" id="shift" name="shift" value="{{ old('shift', '') }}" required placeholder="Ketik shift">
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="barista" class="form-label"><i class="bi bi-person me-1"></i>Nama Barista <span class="text-danger">*</span></label>
+                            @endif
+                            <div class="col-md-{{ session('role') === 'manajemen' ? '6' : '4' }} mb-3">
+                                <label for="barista" class="form-label"><i class="bi bi-person me-1"></i>Nama <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="barista" name="barista" value="{{ $barista_name }}" readonly>
                             </div>
                         </div>

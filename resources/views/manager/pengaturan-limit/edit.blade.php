@@ -9,9 +9,9 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h2 class="mb-0">
-                        <i class="bi bi-sliders me-2"></i>Edit Limit Stok
+                        <i class="bi bi-sliders me-2"></i>{{ $title }}
                     </h2>
-                    <a href="{{ route('manager.pengaturan-limit') }}" class="btn btn-outline-light btn-sm">
+                    <a href="{{ route('manager.pengaturan-limit', ['type' => $inventory_type ?? 'coffee_shop']) }}" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Kembali
                     </a>
                 </div>
@@ -26,6 +26,7 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('manager.pengaturan-limit.update', $bahan->id) }}">
                         @csrf
+                        <input type="hidden" name="inventory_type" value="{{ $inventory_type ?? 'coffee_shop' }}">
 
                         <div class="mb-3">
                             <label class="form-label">Nama Bahan</label>
@@ -65,7 +66,7 @@
                         </div>
 
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="{{ route('manager.pengaturan-limit') }}" class="btn btn-outline-light">Batal</a>
+                            <a href="{{ route('manager.pengaturan-limit', ['type' => $inventory_type ?? 'coffee_shop']) }}" class="btn btn-outline-light">Batal</a>
                             <button type="submit" class="btn btn-light">Simpan Perubahan</button>
                         </div>
                     </form>

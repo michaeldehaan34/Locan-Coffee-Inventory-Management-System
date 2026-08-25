@@ -28,523 +28,7 @@ class ManagerController extends Controller
     // =========================================================
     // RIWAYAT STOK MASUK (EXPORT)
     // =========================================================
-    public function exportStokMasuk(Request $request)
-    {
-        $tglAwal = $request->input('tgl_awal');
-        $tglAkhir = $request->input('tgl_akhir');
-        $shift = $request->input('shift');
-        $barista = $request->input('barista');
-        $barang = $request->input('barang');
-
-        $raw = StokMasuk::query()
-            ->select(array_merge(['id', 'tanggal', 'shift', 'barista'], Bahan::activeKeys()))
-            ->when($tglAwal, fn ($q) => $q->where('tanggal', '>=', $tglAwal))
-            ->when($tglAkhir, fn ($q) => $q->where('tanggal', '<=', $tglAkhir))
-            ->when($shift, fn ($q) => $q->where('shift', $shift))
-            ->when($barista, fn ($q) => $q->where('barista', 'like', '%'.$barista.'%'));
-
-        // Filter nama barang meniru Flask (build_item_name_clause).
-        StockAnalytics::applyBarangNameFilter($raw, $barang);
-
-        $raw = $raw->orderByDesc('tanggal')->orderByDesc('id')->get();
-
-        $periode = ($tglAwal && $tglAkhir) ? "$tglAwal s.d. $tglAkhir" : 'Seluruh Riwayat';
-
-        return ExportService::stokMasukExcel($raw, $periode, session('name') ?: 'Manager');
-    }
-
-    // =========================================================
-    // RIWAYAT UPDATE STOK
-    // =========================================================
-    public function riwayatUpdateStok(Request $request): View
-    {
-        $barang = $request->input('barang');
-        $tglAwal = $request->input('tgl_awal');
-        $tglPembanding = $request->input('tgl_pembanding');
-
-        $records = StockAnalytics::allUpdateStok($barang);
-        $stats = StockAnalytics::updateStokStats($records);
-
-        $comparison = $tglAwal || $tglPembanding
-            ? StockAnalytics::comparisonForDates($tglAwal, $tglPembanding)
-            : ['requested' => false, 'has_data' => false, 'tanggal_valid' => true, 'tanggal_awal' => '-', 'tanggal_pembanding' => '-', 'items' => []];
-
-        return view('manager.riwayat-update-stok', [
-            'title' => 'Riwayat Update Stok',
-            'records' => $records,
-            'records_json' => json_encode(array_values($records)),
-            'stats' => $stats,
-            'comparison' => $comparison,
-            'filter_barang' => $barang,
-            'tgl_awal' => $tglAwal,
-            'tgl_pembanding' => $tglPembanding,
-            'barang_suggestions' => Bahan::activeItems(),
-        ]);
-    }
-
-    public function exportUpdateStok(Request $request)
-    {
-        $barang = $request->input('barang');
-        $raw = UpdateStok::query()
-            ->select(array_merge(['id', 'tanggal', 'shift', 'barista'], Bahan::activeKeys()))
-            ->when($barang, fn ($q) => $q->where(function ($query) use ($barang) {
-                foreach (Bahan::activeKeys() as $k) {
-                    $query->orWhere($k, 'like', '%'.$barang.'%');
-                }
-            }))
-            ->orderByDesc('tanggal')->orderByDesc('id')->get();
-
-        $filterInfo = $barang ? "Barang: $barang" : '';
-
-        return ExportService::updateStokExcel($raw, $filterInfo, session('name') ?: 'Manager');
-    }
-
-    public function exportUpdateStokPdf(Request $request)
-    {
-        $barang = $request->input('barang');
-        $records = StockAnalytics::allUpdateStok($barang);
-        $filterInfo = $barang ? "Barang: $barang" : '';
-
-        return ExportService::updateStokPdf($records, $filterInfo, session('name') ?: 'Manager');
-    }
-
-    // =========================================================
-    // UPDATE STOK EDIT / UPDATE / DELETE
-    // =========================================================
-
-    /**
-     * Halaman form edit Update Stok.
-     *
-     * Data transaksi diambil via Eloquent ORM lalu dipetakan ke default_data
-     * agar accordion Master Barang terisi dengan nilai yang sudah ada.
-     */
-    public function updateStokEdit(int $id): View
-    {
-        $record = UpdateStok::findOrFail($id);
-
-        $defaultData = [
-            'tanggal' => $record->tanggal?->format('Y-m-d'),
-            'shift' => $record->shift,
-            'barista' => $record->barista,
-        ];
-
-        foreach (Bahan::activeKeys() as $kode) {
-            $defaultData[$kode] = $record->{$kode};
-        }
-
-        return view('manager.update-stok.edit', [
-            'title' => 'Edit Update Stok',
-            'id' => $id,
-            'bahan_tree' => Bahan::groupedActiveTree(),
-            'shift_list' => shift_list(),
-            'default_data' => $defaultData,
-        ]);
-    }
-
-    /**
-     * Proses update Update Stok (validasi inline + Eloquent update).
-     *
-     * SEMUA item bahan wajib diisi (sama seperti form Barista).
-     */
-    public function updateStokUpdate(Request $request, int $id): RedirectResponse
-    {
-        $record = UpdateStok::findOrFail($id);
-
-        $tanggal = (string) $request->input('tanggal', '');
-        $shift = (string) $request->input('shift', '');
-        $barista = (string) $request->input('barista', '');
-
-        if ($tanggal === '') {
-            flash_danger('Tanggal harus diisi.');
-            return back()->withInput();
-        }
-        if (! is_valid_date($tanggal)) {
-            flash_danger('Format tanggal tidak valid.');
-            return back()->withInput();
-        }
-        if (! is_valid_shift($shift)) {
-            flash_danger('Shift tidak valid.');
-            return back()->withInput();
-        }
-        if ($barista === '') {
-            flash_danger('Nama barista harus diisi.');
-            return back()->withInput();
-        }
-
-        $activeKeys = Bahan::activeKeys();
-        $data = [
-            'tanggal' => $tanggal,
-            'shift' => $shift,
-            'barista' => $barista,
-        ];
-
-        foreach ($activeKeys as $kode) {
-            $val = trim((string) $request->input($kode, ''));
-            if ($val === '') {
-                continue; // Keep existing value when Manager does not change this item.
-            }
-            if (! is_numeric($val)) {
-                flash_danger("Nilai untuk {$kode} harus berupa angka.");
-                return back()->withInput();
-            }
-            $data[$kode] = $val;
-        }
-
-        $record->update($data);
-
-        flash_success('Data update stok berhasil diperbarui.');
-
-        return redirect()->route('manager.riwayat.update-stok');
-    }
-
-    /**
-     * Proses hapus Update Stok (Eloquent delete dalam transaksi DB).
-     */
-    public function updateStokDestroy(int $id): RedirectResponse
-    {
-        DB::transaction(function () use ($id) {
-            $record = UpdateStok::findOrFail($id);
-            $record->delete();
-        });
-
-        flash_success('Data update stok berhasil dihapus.');
-
-        return redirect()->route('manager.riwayat.update-stok');
-    }
-
-    // =========================================================
-    // RIWAYAT DAILY CLEAN
-    // =========================================================
-    public function riwayatDailyClean(Request $request): View
-    {
-        $tanggal = $request->input('tanggal');
-        $shift = $request->input('shift');
-        $barista = $request->input('barista');
-
-        $records = DailyClean::query()
-            ->withCount('photos')
-            ->when($tanggal, fn ($q) => $q->where('tanggal', $tanggal))
-            ->when($shift, fn ($q) => $q->where('shift', $shift))
-            ->when($barista, fn ($q) => $q->where('barista', 'like', '%'.$barista.'%'))
-            ->orderByDesc('tanggal')->orderByDesc('id')->get()
-            ->map(fn ($r) => [
-                'id' => $r->id,
-                'tanggal' => $r->tanggal ? $r->tanggal->format('Y-m-d') : '',
-                'shift' => $r->shift,
-                'barista' => $r->barista,
-                'jumlah_foto' => $r->photos_count,
-            ]);
-
-        return view('manager.riwayat-daily-clean', [
-            'title' => 'Riwayat Daily Clean',
-            'records' => $records,
-            'filter_tanggal' => $tanggal,
-            'filter_shift' => $shift,
-            'filter_barista' => $barista,
-            'shift_list' => shift_list(),
-        ]);
-    }
-
-    public function dailyCleanDetail(int $id)
-    {
-        $rec = DailyClean::with('photos')->findOrFail($id);
-
-        return response()->json([
-            'tanggal' => $rec->tanggal ? $rec->tanggal->format('Y-m-d') : '',
-            'shift' => $rec->shift,
-            'barista' => $rec->barista,
-            'photos' => $rec->photos->map(fn ($p) => [
-                'url' => Storage::disk('public')->url($p->filename),
-                'name' => $p->original_name,
-            ]),
-        ]);
-    }
-
-    /**
-     * Halaman detail Daily Clean (full page info, bukan modal).
-     */
-    public function dailyCleanDetailPage(int $id): View
-    {
-        $rec = DailyClean::with('photos')->findOrFail($id);
-
-        $photos = $rec->photos->map(fn ($p) => [
-            'url' => Storage::disk('public')->url($p->filename),
-            'original_name' => $p->original_name,
-        ]);
-
-        return view('manager.riwayat-daily-clean.detail', [
-            'title' => 'Detail Daily Clean',
-            'record' => $rec,
-            'photos' => $photos,
-            'jumlah_foto' => $rec->photos->count(),
-        ]);
-    }
-
-    public function exportDailyClean()
-    {
-        $records = DailyClean::query()
-            ->withCount('photos')
-            ->orderByDesc('tanggal')->orderByDesc('id')->get();
-
-        return ExportService::dailyCleanExcel($records, session('name') ?: 'Manager');
-    }
-
-    /**
-     * Hapus satu data Daily Clean beserta semua file foto yang berkaitan.
-     *
-     * Proses dalam DB::transaction:
-     * 1. Hapus setiap file foto dari storage.
-     * 2. Hapus record daily_clean_photo.
-     * 3. Hapus folder jika kosong.
-     * 4. Hapus record daily_clean.
-     */
-    public function dailyCleanDestroy(int $id): RedirectResponse
-    {
-        $record = DailyClean::with('photos')->find($id);
-
-        if (! $record) {
-            flash_danger('Data Daily Clean tidak ditemukan.');
-            return redirect()->back();
-        }
-
-        DB::transaction(function () use ($record) {
-            // Hapus semua file foto dari storage
-            foreach ($record->photos as $photo) {
-                $filePath = $photo->filename;
-                if ($filePath && Storage::disk('public')->exists($filePath)) {
-                    Storage::disk('public')->delete($filePath);
-                }
-                $photo->delete();
-            }
-
-            // Hapus folder tanggal jika kosong
-            $firstPhoto = $record->photos->first();
-            if ($firstPhoto && $firstPhoto->filename) {
-                $folderPath = dirname($firstPhoto->filename);
-                if ($folderPath && $folderPath !== '.' && $folderPath !== '/') {
-                    $remainingFiles = Storage::disk('public')->allFiles($folderPath);
-                    if (empty($remainingFiles)) {
-                        Storage::disk('public')->deleteDirectory($folderPath);
-                    }
-                }
-            }
-
-            $record->delete();
-        });
-
-        flash_success('Daily Clean berhasil dihapus.');
-        return redirect()->back();
-    }
-
-    /**
-     * Hapus massal beberapa data Daily Clean.
-     *
-     * Menerima array ID via POST, lalu memproses penghapusan
-     * dalam satu transaksi database.
-     */
-    public function dailyCleanBulkDelete(Request $request): RedirectResponse
-    {
-        $ids = $request->input('ids', []);
-
-        if (empty($ids) || ! is_array($ids)) {
-            flash_danger('Pilih minimal satu data terlebih dahulu.');
-            return redirect()->route('manager.riwayat.daily-clean');
-        }
-
-        // Sanitasi: pastikan semua ID adalah integer
-        $ids = array_map('intval', $ids);
-        $ids = array_filter($ids, fn ($v) => $v > 0);
-
-        if (empty($ids)) {
-            flash_danger('Pilih minimal satu data terlebih dahulu.');
-            return redirect()->route('manager.riwayat.daily-clean');
-        }
-
-        $count = count($ids);
-
-        DB::transaction(function () use ($ids) {
-            $records = DailyClean::with('photos')->whereIn('id', $ids)->get();
-
-            foreach ($records as $record) {
-                // Hapus file foto
-                foreach ($record->photos as $photo) {
-                    $filePath = $photo->filename;
-                    if ($filePath && Storage::disk('public')->exists($filePath)) {
-                        Storage::disk('public')->delete($filePath);
-                    }
-                    $photo->delete();
-                }
-
-                // Hapus folder per tanggal jika kosong
-                $firstPhoto = $record->photos->first();
-                if ($firstPhoto && $firstPhoto->filename) {
-                    $folderPath = dirname($firstPhoto->filename);
-                    if ($folderPath && $folderPath !== '.' && $folderPath !== '/') {
-                        $remainingFiles = Storage::disk('public')->allFiles($folderPath);
-                        if (empty($remainingFiles)) {
-                            Storage::disk('public')->deleteDirectory($folderPath);
-                        }
-                    }
-                }
-
-                $record->delete();
-            }
-        });
-
-        flash_success("{$count} data Daily Clean berhasil dihapus.");
-        return redirect()->route('manager.riwayat.daily-clean');
-    }
-
-    // =========================================================
-    // UPDATE STOK DETAIL (FULL PAGE)
-    // =========================================================
-    /**
-     * Halaman detail Update Stok (full page info, bukan modal).
-     */
-    public function updateStokDetail(int $id): View
-    {
-        $record = UpdateStok::findOrFail($id);
-        $items = [];
-
-        foreach (Bahan::activeKeys() as $kode) {
-            $val = $record->{$kode};
-            if ($val !== null && $val !== '' && (float)$val > 0) {
-                $bahan = Bahan::where('kode', $kode)->first();
-                $items[] = [
-                    'kode' => $kode,
-                    'nama' => $bahan?->nama ?? $kode,
-                    'satuan' => $bahan?->satuan ?? '',
-                    'nilai' => $val,
-                ];
-            }
-        }
-
-        return view('manager.riwayat-update-stok.detail', [
-            'title' => 'Detail Update Stok',
-            'record' => $record,
-            'items' => $items,
-            'tanggal' => $record->tanggal?->format('Y-m-d'),
-        ]);
-    }
-
-    // =========================================================
-    // RIWAYAT TOKEN LISTRIK
-    // =========================================================
-public function riwayatTokenListrik(Request $request): View
-    {
-        $tglAwal = $request->input('tgl_awal');
-        $tglAkhir = $request->input('tgl_akhir');
-        $shift = $request->input('shift');
-        $barista = $request->input('barista');
-
-        $records = TokenListrik::query()
-            ->when($tglAwal, fn ($q) => $q->where('tanggal', '>=', $tglAwal))
-            ->when($tglAkhir, fn ($q) => $q->where('tanggal', '<=', $tglAkhir))
-            ->when($shift, fn ($q) => $q->where('shift', $shift))
-            ->when($barista, fn ($q) => $q->where('barista', 'like', '%'.$barista.'%'))
-            ->orderByDesc('tanggal')->orderByDesc('id')->get()
-            ->map(fn ($r) => [
-                'id' => $r->id,
-                'tanggal' => $r->tanggal ? $r->tanggal->format('Y-m-d') : '',
-                'shift' => $r->shift,
-                'barista' => $r->barista,
-                'token_r17' => $r->token_r17,
-                'token_r18' => $r->token_r18,
-                'token_mesin' => $r->token_mesin,
-            ]);
-
-        return view('manager.riwayat-token-listrik', [
-            'title' => 'Riwayat Token Listrik',
-            'records' => $records,
-            'filter_tgl_awal' => $tglAwal,
-            'filter_tgl_akhir' => $tglAkhir,
-            'filter_shift' => $shift,
-            'filter_barista' => $barista,
-            'shift_list' => shift_list(),
-        ]);
-    }
-
-    /**
-     * Hapus satu data Token Listrik.
-     */
-    public function tokenListrikDestroy(int $id): \Illuminate\Http\JsonResponse|RedirectResponse
-    {
-        $record = TokenListrik::find($id);
-
-        if (! $record) {
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Data Token Listrik tidak ditemukan.']);
-            }
-            flash_danger('Data Token Listrik tidak ditemukan.');
-            return redirect()->back();
-        }
-
-        $record->delete();
-
-        if (request()->wantsJson() || request()->ajax()) {
-            return response()->json(['success' => true, 'message' => 'Token Listrik berhasil dihapus.']);
-        }
-
-        flash_success('Token Listrik berhasil dihapus.');
-        return redirect()->route('manager.riwayat.token-listrik');
-    }
-
-    /**
-     * Hapus massal beberapa data Token Listrik.
-     */
-    public function tokenListrikBulkDelete(Request $request): \Illuminate\Http\JsonResponse|RedirectResponse
-    {
-        $ids = $request->input('ids', []);
-
-        if (empty($ids) || ! is_array($ids)) {
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Pilih minimal satu data terlebih dahulu.']);
-            }
-            flash_danger('Pilih minimal satu data terlebih dahulu.');
-            return redirect()->route('manager.riwayat.token-listrik');
-        }
-
-        $ids = array_map('intval', $ids);
-        $ids = array_filter($ids, fn ($v) => $v > 0);
-
-        if (empty($ids)) {
-            if ($request->wantsJson() || $request->ajax()) {
-                return response()->json(['success' => false, 'message' => 'Pilih minimal satu data terlebih dahulu.']);
-            }
-            flash_danger('Pilih minimal satu data terlebih dahulu.');
-            return redirect()->route('manager.riwayat.token-listrik');
-        }
-
-        $count = count($ids);
-        TokenListrik::whereIn('id', $ids)->delete();
-
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json(['success' => true, 'message' => $count . ' data Token Listrik berhasil dihapus.']);
-        }
-
-        flash_success("{$count} data Token Listrik berhasil dihapus.");
-        return redirect()->route('manager.riwayat.token-listrik');
-    }
-
-    public function exportTokenListrik()
-    {
-        $records = TokenListrik::query()->orderByDesc('tanggal')->orderByDesc('id')->get();
-
-        return ExportService::tokenListrikExcel($records, session('name') ?: 'Manager');
-    }
-
-    /**
-     * Halaman detail Token Listrik (full page info, bukan modal).
-     */
-    public function tokenListrikDetail(int $id): View
-    {
-        $record = TokenListrik::findOrFail($id);
-
-        return view('manager.riwayat-token-listrik.detail', [
-            'title' => 'Detail Token Listrik',
-            'record' => $record,
-        ]);
-    }
+    
 
     // =========================================================
     // DATA BARISTA (CRUD)
@@ -614,7 +98,8 @@ public function riwayatTokenListrik(Request $request): View
             return back()->withInput();
         }
 
-        if (! in_array($role, ['barista', 'manager'], true)) {
+        $allowedRoles = ['barista', 'manajemen', 'headbar', 'kitchen', 'headkitchen', 'admin gudang'];
+        if (! in_array($role, $allowedRoles, true)) {
             flash_danger('Role tidak valid.');
 
             return back()->withInput();
@@ -721,6 +206,20 @@ public function riwayatTokenListrik(Request $request): View
     {
         $barista = Barista::findOrFail($id);
 
+        $username = trim((string) $request->input('username', ''));
+        if ($username === '') {
+            flash_danger('Username tidak boleh kosong.');
+            return back()->withInput();
+        }
+
+        $existsInBarista = Barista::where('username', $username)->where('id', '<>', $barista->id)->exists();
+        $existsInManager = Manager::where('username', $username)->exists();
+
+        if ($existsInBarista || $existsInManager) {
+            flash_danger('Username sudah digunakan.');
+            return back()->withInput();
+        }
+
         $redirect = $this->validateBarista($request, $barista->id);
         if ($redirect instanceof RedirectResponse) {
             return $redirect;
@@ -731,6 +230,7 @@ public function riwayatTokenListrik(Request $request): View
         $role = trim((string) $request->input('role'));
 
         $barista->update([
+            'username' => $username,
             'nama_lengkap' => $nama,
             'no_telp' => $noTelp,
             'role' => $role,
@@ -758,91 +258,198 @@ public function riwayatTokenListrik(Request $request): View
     // =========================================================
     // PENGATURAN LIMIT
     // =========================================================
-    public function pengaturanLimit(): View
+    public function pengaturanLimit(Request $request): View
     {
-        $limits = Bahan::with('limit')
-            ->where('is_active', 1)
+        $type = $request->input('type', 'coffee_shop'); // Default coffee_shop
+
+        $limits = Bahan::where('is_active', 1)
             ->orderBy('sort_order')->orderBy('id')
             ->select('id', 'kode', 'nama', 'satuan', 'kategori', 'urutan')
             ->get()
-            ->map(function ($b) {
+            ->map(function ($b) use ($type) {
+                // Get the limit for this specific type
+                $lim = BahanLimit::where('bahan_id', $b->id)->where('inventory_type', $type)->first();
                 return (object) [
                     'id' => $b->id,
                     'kode' => $b->kode,
                     'nama' => $b->nama,
                     'satuan' => $b->satuan,
-                    'limit_habis' => $b->limit?->limit_habis ?? StockAnalytics::DEFAULT_LIMIT_HABIS,
-                    'limit_tipis' => $b->limit?->limit_tipis ?? StockAnalytics::DEFAULT_LIMIT_TIPIS,
+                    'limit_habis' => $lim->limit_habis ?? StockAnalytics::DEFAULT_LIMIT_HABIS,
+                    'limit_tipis' => $lim->limit_tipis ?? StockAnalytics::DEFAULT_LIMIT_TIPIS,
                 ];
             });
 
         return view('manager.pengaturan-limit', [
-            'title' => 'Pengaturan Limit Stok',
+            'title' => 'Pengaturan Limit Stok (' . ucfirst(str_replace('_', ' ', $type)) . ')',
             'limits' => $limits,
+            'inventory_type' => $type,
         ]);
     }
 
-    public function pengaturanLimitSimpan(Request $request): RedirectResponse
+    // =========================================================
+    // TERIMA STOK (Coffeeshop)
+    // =========================================================
+    
+    public function terimaStokIndex(Request $request): View
     {
-        $request->validate([
-            'bahan_id' => 'required|exists:bahan,id',
-            'limit_habis' => 'required|numeric|min:0',
-            'limit_tipis' => 'required|numeric|min:0',
-        ]);
+        $kirimStok = \App\Models\GudangKirimStok::with('items.bahan')->get()->map(function($item) {
+            $item->source = 'gudang_kirim';
+            $item->pelaku = $item->manager;
+            return $item;
+        });
 
-        BahanLimit::updateOrCreate(
-            ['bahan_id' => $request->input('bahan_id')],
-            [
-                'limit_habis' => $request->input('limit_habis'),
-                'limit_tipis' => $request->input('limit_tipis'),
-            ]
+        $ambilBahan = \App\Models\AmbilBahanGudang::with('items.bahan')->get()->map(function($item) {
+            $item->source = 'ambil_bahan_gudang';
+            $item->pelaku = $item->barista;
+            $item->status = 'diterima'; 
+            return $item;
+        });
+
+        $combined = $kirimStok->concat($ambilBahan);
+        
+        $sorted = $combined->sort(function($a, $b) {
+            $aStatusOrder = $a->status === 'pending' ? 0 : 1;
+            $bStatusOrder = $b->status === 'pending' ? 0 : 1;
+            
+            if ($aStatusOrder !== $bStatusOrder) {
+                return $aStatusOrder <=> $bStatusOrder;
+            }
+            
+            $aTime = $a->created_at ? $a->created_at->timestamp : strtotime($a->tanggal);
+            $bTime = $b->created_at ? $b->created_at->timestamp : strtotime($b->tanggal);
+            
+            if ($aTime !== $bTime) {
+                return $bTime <=> $aTime; 
+            }
+            
+            return $b->id <=> $a->id;
+        })->values();
+
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
+        $perPage = 10;
+        $sliced = $sorted->slice(($page - 1) * $perPage, $perPage);
+        
+        $records = new \Illuminate\Pagination\LengthAwarePaginator(
+            $sliced,
+            $sorted->count(),
+            $perPage,
+            $page,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'query' => $request->query()]
         );
-
-        flash_success('Limit stok berhasil disimpan.');
-
-        return redirect()->route('manager.pengaturan-limit');
-    }
-
-    /**
-     * Halaman form edit limit stok untuk satu bahan (full page, bukan modal).
-     *
-     * Mengikuti pola Edit Master Bahan: card besar dengan data limit yang sudah ada.
-     */
-    public function pengaturanLimitEdit(int $id): View
-    {
-        $bahan = Bahan::with('limit')->findOrFail($id);
-
-        return view('manager.pengaturan-limit.edit', [
-            'title' => 'Edit Limit Stok',
-            'bahan' => $bahan,
-            'limit_habis' => $bahan->limit?->limit_habis ?? StockAnalytics::DEFAULT_LIMIT_HABIS,
-            'limit_tipis' => $bahan->limit?->limit_tipis ?? StockAnalytics::DEFAULT_LIMIT_TIPIS,
+            
+        return view('manager.coffee-shop.terima-stok.index', [
+            'title' => 'Terima Stok dari Gudang',
+            'records' => $records,
         ]);
     }
 
-    /**
-     * Proses update limit stok untuk satu bahan.
-     */
-    public function pengaturanLimitUpdate(Request $request, int $id): RedirectResponse
+    public function terimaStokDetail(Request $request, int $id): View
     {
-        $bahan = Bahan::findOrFail($id);
-
-        $request->validate([
-            'limit_habis' => 'required|numeric|min:0',
-            'limit_tipis' => 'required|numeric|min:0',
+        $source = $request->query('source', 'gudang_kirim');
+        
+        if ($source === 'ambil_bahan_gudang') {
+            $record = \App\Models\AmbilBahanGudang::with('items.bahan')->findOrFail($id);
+            $record->source = 'ambil_bahan_gudang';
+            $record->pelaku = $record->barista;
+            $record->status = 'diterima';
+        } else if ($source === 'gudang_kirim') {
+            $record = \App\Models\GudangKirimStok::with('items.bahan')->findOrFail($id);
+            $record->source = 'gudang_kirim';
+            $record->pelaku = $record->manager;
+        } else {
+            abort(404, 'Invalid source type');
+        }
+        
+        return view('manager.coffee-shop.terima-stok.detail', [
+            'title' => 'Detail Terima Stok',
+            'record' => $record,
+            'source' => $source,
         ]);
+    }
 
-        BahanLimit::updateOrCreate(
-            ['bahan_id' => $bahan->id],
-            [
-                'limit_habis' => $request->input('limit_habis'),
-                'limit_tipis' => $request->input('limit_tipis'),
-            ]
-        );
+    public function terimaStokEdit(int $id): View
+    {
+        $record = \App\Models\GudangKirimStok::with('items.bahan')->findOrFail($id);
+        $defaultData = [
+            'tanggal' => $record->tanggal,
+        ];
+        foreach ($record->items as $item) {
+            $defaultData[$item->bahan->kode] = $item->jumlah;
+        }
 
-        flash_success('Limit stok berhasil disimpan.');
+        return view('manager.coffee-shop.terima-stok.edit', [
+            'title' => 'Edit Terima Stok',
+            'id' => $id,
+            'bahan_tree' => Bahan::groupedActiveTree(),
+            'default_data' => $defaultData,
+        ]);
+    }
 
-        return redirect()->route('manager.pengaturan-limit');
+    public function terimaStokUpdate(Request $request, int $id): RedirectResponse
+    {
+        $tanggal = $request->input('tanggal');
+        if (empty($tanggal)) {
+            flash_danger('Tanggal harus diisi.');
+            return back()->withInput();
+        }
+
+        DB::transaction(function () use ($request, $tanggal, $id) {
+            $record = \App\Models\GudangKirimStok::findOrFail($id);
+            $record->update([
+                'tanggal' => $tanggal,
+            ]);
+
+            \App\Models\GudangKirimStokItem::where('gudang_kirim_stok_id', $record->id)->delete();
+
+            $activeItems = Bahan::activeItems();
+            foreach ($activeItems as $bahan) {
+                $jumlah = $request->input($bahan['kode']);
+                if ($jumlah !== null && $jumlah !== '' && is_numeric($jumlah) && (float)$jumlah > 0) {
+                    \App\Models\GudangKirimStokItem::create([
+                        'gudang_kirim_stok_id' => $record->id,
+                        'bahan_id' => $bahan['id'],
+                        'jumlah' => (float)$jumlah,
+                    ]);
+                }
+            }
+        });
+
+        flash_success('Transaksi terima stok berhasil diperbarui.');
+        return redirect()->route('manager.coffee-shop.terima-stok.index');
+    }
+
+    public function terimaStokDestroy(int $id): RedirectResponse
+    {
+        DB::transaction(function () use ($id) {
+            $record = \App\Models\GudangKirimStok::findOrFail($id);
+            $record->delete();
+        });
+
+        flash_success('Transaksi terima stok berhasil dihapus.');
+        return redirect()->route('manager.coffee-shop.terima-stok.index');
+    }
+
+    public function dashboard(Request $request): View
+    {
+        $type = $request->query('type', 'kitchen');
+        if (!in_array($type, ['kitchen', 'coffee_shop', 'gudang'])) {
+            $type = 'kitchen';
+        }
+
+        $data = StockAnalytics::dashboard($type);
+        
+        $titles = [
+            'kitchen' => 'Dashboard Stok Kitchen Terkini',
+            'coffee_shop' => 'Dashboard Stok Coffeeshop Terkini',
+            'gudang' => 'Dashboard Stok Gudang Terkini',
+        ];
+
+        return view('manager.dashboard', [
+            'title' => $titles[$type],
+            'data' => $data,
+            'inventory_type' => $type,
+            'hideLoader' => true,
+        ]);
     }
 
     // =========================================================
@@ -914,55 +521,16 @@ public function riwayatTokenListrik(Request $request): View
         ]);
     }
 
-    public function laporanExport(Request $request)
-    {
-        $tglAwal = $request->input('tanggal_awal');
-        $tglAkhir = $request->input('tanggal_akhir');
+    
 
-        return ExportService::laporanPdf($tglAwal, $tglAkhir, session('name') ?: 'Manager');
-    }
+    
 
-    // =========================================================
-    // FORECAST
-    // =========================================================
-    public function forecast(Request $request): View
-    {
-        $tglAwal = $request->input('tanggal_awal');
-        $tglAkhir = $request->input('tanggal_akhir');
+    
+    
 
-        $data = StockAnalytics::forecast($tglAwal, $tglAkhir);
-        $periodeValid = $data['periode_valid'];
+    
 
-        return view('manager.forecast', [
-            'title' => 'Forecast Mingguan',
-            'tanggal_awal' => $tglAwal,
-            'tanggal_akhir' => $tglAkhir,
-            'periode_valid' => $periodeValid,
-            'items_tree' => $data['items_tree'],
-            'total_kebutuhan' => $data['total_kebutuhan'],
-            'total_estimasi_pembelian' => $data['total_estimasi_pembelian'],
-            'jumlah_hari' => $data['jumlah_hari'],
-        ]);
-    }
-
-    public function forecastExportExcel(Request $request)
-    {
-        $tglAwal = $request->input('tanggal_awal');
-        $tglAkhir = $request->input('tanggal_akhir');
-        $data = StockAnalytics::forecast($tglAwal, $tglAkhir);
-        $periode = ($tglAwal && $tglAkhir) ? "$tglAwal s.d. $tglAkhir" : '-';
-
-        return ExportService::forecastExcel($data, $periode, session('name') ?: 'Manager');
-    }
-
-    public function forecastExportPdf(Request $request)
-    {
-        $tglAwal = $request->input('tanggal_awal');
-        $tglAkhir = $request->input('tanggal_akhir');
-        $data = StockAnalytics::forecast($tglAwal, $tglAkhir);
-
-        return ExportService::forecastPdf($data, session('name') ?: 'Manager');
-    }
+    
 
     // =========================================================
     // EDIT AKUN SAYA (UPDATE PROFILE)
@@ -1123,4 +691,81 @@ public function riwayatTokenListrik(Request $request): View
         flash_success('Profil berhasil diperbarui.');
         return back();
     }
+
+    /**
+     * Hapus satu data Update Stok.
+     */
+    public function updateStokDestroy(int $id): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    {
+        $record = \App\Models\UpdateStok::find($id);
+
+        if (! $record) {
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Data Update Stok tidak ditemukan.']);
+            }
+            flash_danger('Data Update Stok tidak ditemukan.');
+            return redirect()->back();
+        }
+
+        $record->delete();
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Update Stok berhasil dihapus.']);
+        }
+
+        flash_success('Update Stok berhasil dihapus.');
+        return redirect()->route('manager.riwayat.update-stok');
+    }
+
+    /**
+     * Hapus massal beberapa data Update Stok.
+     */
+    public function updateStokBulkDelete(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids) || ! is_array($ids)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Pilih minimal satu data untuk dihapus.']);
+            }
+            flash_danger('Pilih minimal satu data untuk dihapus.');
+            return redirect()->back();
+        }
+
+        $count = \App\Models\UpdateStok::whereIn('id', $ids)->delete();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => $count . ' data Update Stok berhasil dihapus.']);
+        }
+
+        flash_success("{$count} data Update Stok berhasil dihapus.");
+        return redirect()->route('manager.riwayat.update-stok');
+    }
+
+
+    /**
+     * Hapus massal beberapa data Terima Stok.
+     */
+    public function terimaStokBulkDelete(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids) || ! is_array($ids)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Pilih minimal satu data untuk dihapus.']);
+            }
+            flash_danger('Pilih minimal satu data untuk dihapus.');
+            return redirect()->back();
+        }
+
+        $count = \App\Models\StokMasuk::whereIn('id', $ids)->delete();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => $count . ' data Terima Stok berhasil dihapus.']);
+        }
+
+        flash_success("{$count} data Terima Stok berhasil dihapus.");
+        return redirect()->route('manager.riwayat.terima-stok');
+    }
 }
+

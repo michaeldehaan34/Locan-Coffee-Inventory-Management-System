@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Barista;
 use App\Models\Bahan;
+use App\Models\Manager;
 use App\Models\UpdateStok;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Session;
@@ -28,8 +29,9 @@ class UpdateStokTest extends TestCase
     use RefreshDatabase;
 
     private Barista $barista;
+    private Manager $manager;
 
-    protected function setUp(): void
+        protected function setUp(): void
     {
         parent::setUp();
 
@@ -37,14 +39,19 @@ class UpdateStokTest extends TestCase
         $this->artisan('migrate');
 
         // Buat barista uji (password = 6 digit terakhir no_telp, ala Flask).
-        $this->barista = Barista::create([
+                $this->barista = Barista::create([
             'username' => 'tester_update_stok',
             'nama_lengkap' => 'Tester Update Stok',
             'no_telp' => '081234567890',
             'role' => 'barista',
         ]);
+        $this->manager = Manager::create([
+            'username' => 'manager_update_stok',
+            'no_telp' => '081298765432',
+        ]);
 
         // Pastikan ada minimal satu bahan aktif agar form punya item.
+
         if (Bahan::active()->count() === 0) {
             Bahan::create([
                 'kode' => 'arabica',
@@ -68,7 +75,17 @@ class UpdateStokTest extends TestCase
         ]);
     }
 
-    private function validPayload(array $overrides = []): array
+        private function loginAsManager(): void
+    {
+        $this->withSession([
+            'user_id' => $this->manager->id,
+            'username' => $this->manager->username,
+            'role' => 'manager',
+            'name' => $this->manager->username,
+        ]);
+    }
+
+        private function validPayload(array $overrides = []): array
     {
         $payload = [
             'tanggal' => now()->format('Y-m-d'),
@@ -93,7 +110,27 @@ class UpdateStokTest extends TestCase
         $response->assertSee('Update Stok');
     }
 
-    public function test_submit_berhasil_dan_histori_tersimpan(): void
+        public function test_manager_tidak_dapat_membuka_form_update_stok(): void
+    {
+        $this->loginAsManager();
+
+        $response = $this->get(route('barista.update-stok'));
+
+        $response->assertStatus(403);
+    }
+
+    public function test_manager_tidak_dapat_submit(): void
+    {
+        $this->loginAsManager();
+
+        $response = $this->post(route('barista.update-stok.store'), [
+            'tanggal' => now()->format('Y-m-d'),
+        ]);
+
+        $response->assertStatus(403);
+    }
+
+        public function test_submit_berhasil_dan_histori_tersimpan(): void
     {
         $this->login();
         $this->withoutMiddleware();
@@ -206,7 +243,7 @@ class UpdateStokTest extends TestCase
         $this->login();
         $this->withoutMiddleware();
 
-        $payload = $this->validPayload(['shift' => 'Pagi']);
+        $payload = $this->validPayload(['shift' => '']);
 
         $response = $this->post(route('barista.update-stok.store'), $payload);
 

@@ -32,10 +32,20 @@ class Barista extends Model
      */
     protected $fillable = [
         'username',
+        'password',
         'nama_lengkap',
         'no_telp',
         'role',
         'created_at',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
     ];
 
     /**
@@ -47,6 +57,7 @@ class Barista extends Model
     {
         return [
             'created_at' => 'datetime',
+            'password' => 'hashed',
         ];
     }
 

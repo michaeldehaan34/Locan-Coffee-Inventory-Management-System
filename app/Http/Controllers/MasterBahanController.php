@@ -31,15 +31,19 @@ class MasterBahanController extends Controller
             ->select(['id', 'kode', 'nama', 'kategori', 'kelompok', 'satuan', 'urutan', 'is_active']);
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+                        $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', '%' . $search . '%')
-                  ->orWhere('kode', 'like', '%' . $search . '%');
+                  ->orWhere('kode', 'like', '%' . $search . '%')
+                  ->orWhere('kategori', 'like', '%' . $search . '%')
+                  ->orWhere('kelompok', 'like', '%' . $search . '%');
             });
+
         }
 
         $bahan_list = $query
-            ->orderBy('sort_order')
-            ->orderBy('id')
+            ->orderByRaw("CASE kategori WHEN 'Bahan Baku Bar' THEN 1 WHEN 'Bahan Baku Kitchen' THEN 2 WHEN 'Equipment' THEN 3 ELSE 4 END")
+            ->orderBy('kelompok', 'asc')
+            ->orderBy('nama', 'asc')
             ->paginate(15)
             ->withQueryString();
 
@@ -102,9 +106,9 @@ class MasterBahanController extends Controller
         }
 
         $list = Bahan::where('kategori', $kategori)
-            ->select('kelompok', DB::raw('MIN(urutan) as min_u'))
+            ->select('kelompok')
             ->groupBy('kelompok')
-            ->orderBy('min_u')
+            ->orderBy('kelompok', 'asc')
             ->pluck('kelompok')
             ->all();
 
@@ -139,7 +143,7 @@ class MasterBahanController extends Controller
 
         flash_success('Bahan berhasil ditambahkan.');
 
-        return redirect()->route('manager.master-bahan');
+        return redirect()->route('gudang.master-bahan');
     }
 
     /**
@@ -153,7 +157,7 @@ class MasterBahanController extends Controller
         $kode = strtolower(trim($validated['kode']));
         $oldKode = $bahan->kode;
 
-        $urutan = intval($validated['urutan'] ?? 999);
+        $urutan = intval($validated['urutan'] ?? $bahan->urutan);
         $bahan->update([
             'kode' => $kode,
             'nama' => trim($validated['nama']),
@@ -170,7 +174,7 @@ class MasterBahanController extends Controller
 
         flash_success('Bahan berhasil diperbarui.');
 
-        return redirect()->route('manager.master-bahan');
+        return redirect()->route('gudang.master-bahan');
     }
 
     /**
@@ -186,7 +190,7 @@ class MasterBahanController extends Controller
 
         flash_success('Bahan berhasil dihapus.');
 
-        return redirect()->route('manager.master-bahan');
+        return redirect()->route('gudang.master-bahan');
     }
 
     /**
@@ -199,7 +203,7 @@ class MasterBahanController extends Controller
 
         flash_success('Status bahan berhasil diubah.');
 
-        return redirect()->route('manager.master-bahan');
+        return redirect()->route('gudang.master-bahan');
     }
 
     // =========================================================

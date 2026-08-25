@@ -81,8 +81,7 @@ class ExampleTest extends TestCase
 
         $response = $this->get(route('manager.dashboard'));
         $response->assertStatus(200);
-
-        $response = $this->get(route('manager.master-bahan'));
+        $response = $this->get(route('manager.data-barista'));
         $response->assertStatus(200);
     }
 
@@ -93,8 +92,7 @@ class ExampleTest extends TestCase
 
         $response = $this->get(route('manager.dashboard'));
         $response->assertForbidden(); // 403
-
-        $response = $this->get(route('manager.master-bahan'));
+        $response = $this->get(route('manager.data-barista'));
         $response->assertForbidden(); // 403
     }
 
@@ -106,16 +104,16 @@ class ExampleTest extends TestCase
         $response = $this->get(route('barista.dashboard'));
         $response->assertStatus(200);
 
-        $response = $this->get(route('barista.stok-masuk'));
+        $response = $this->get(route('barista.ambil-bahan-gudang'));
         $response->assertStatus(200);
     }
 
-    public function test_manager_dapat_mengakses_menu_barista(): void
+    public function test_manager_ditolak_mengakses_menu_barista(): void
     {
-        // Manager memiliki akses penuh (route 'role:barista,manager').
+        // Manager DITOLAK (403) saat akses route barista.
         $this->loginAs('manager');
 
         $response = $this->get(route('barista.dashboard'));
-        $response->assertStatus(200);
+        $response->assertStatus(403);
     }
 }

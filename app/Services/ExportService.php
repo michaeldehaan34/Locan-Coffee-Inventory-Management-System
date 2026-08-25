@@ -775,8 +775,109 @@ class ExportService
         }
 
         $html .= self::pdfFooter($dicetak);
-
         return self::pdfResponse($html, 'laporan_'.now()->format('Ymd_His').'.pdf');
+    }
+
+    public static function laporanExcel(?string $tglAwal, ?string $tglAkhir, string $dicetak): StreamedResponse
+    {
+        $spreadsheet = new Spreadsheet();
+        $ws = $spreadsheet->getActiveSheet();
+        $ws->setTitle('Laporan Mingguan');
+
+        $periode = ($tglAwal && $tglAkhir) ? format_tanggal_id($tglAwal) . ' - ' . format_tanggal_id($tglAkhir) : 'Belum ada filter';
+
+        $ws->setCellValue('A1', 'Laporan Mingguan Inventory');
+        $ws->setCellValue('A2', 'Periode: ' . $periode);
+        $ws->setCellValue('A3', 'Dicetak oleh: ' . $dicetak . ' pada ' . now()->format('d/m/Y H:i'));
+
+        $ws->getStyle('A1:A3')->getFont()->setBold(true);
+
+        if ($tglAwal && $tglAkhir) {
+            $data = StockAnalytics::readUpdateStok();
+            $limitMap = StockAnalytics::limitMap();
+            $keyToLabel = StockAnalytics::keyToLabel();
+
+            $periodeRows = array_filter($data['rows'], function ($r) use ($tglAwal, $tglAkhir) {
+                return $tglAwal <= $r['tanggal'] && $r['tanggal'] <= $tglAkhir;
+            });
+            $totalUpdateStok = count($periodeRows);
+
+            $last = $data['last_row'];
+            $aman = $tipis = $habis = 0;
+            if ($last) {
+                foreach ($data['item_keys'] as $key) {
+                    [$lh, $lt] = $limitMap[$key] ?? [StockAnalytics::DEFAULT_LIMIT_HABIS, StockAnalytics::DEFAULT_LIMIT_TIPIS];
+                    $v = StockAnalytics::toFloat($last['values'][$key] ?? null);
+                    if ($v === null || $v <= $lh) {
+                        $habis++;
+                    } elseif ($v <= $lt) {
+                        $tipis++;
+                    } else {
+                        $aman++;
+                    }
+                }
+            }
+
+            $ws->setCellValue('A5', 'Ringkasan Statistik');
+            $ws->getStyle('A5')->getFont()->setBold(true);
+            $ws->setCellValue('A6', 'Total Update Stok');
+            $ws->setCellValue('B6', $totalUpdateStok);
+            $ws->setCellValue('A7', 'Barang Aman');
+            $ws->setCellValue('B7', $aman);
+            $ws->setCellValue('A8', 'Barang Tipis');
+            $ws->setCellValue('B8', $tipis);
+            $ws->setCellValue('A9', 'Barang Habis');
+            $ws->setCellValue('B9', $habis);
+
+            $rowIdx = 11;
+            
+            // Top Habis
+            $topHabis = StockAnalytics::topHabis($data, $limitMap, $keyToLabel);
+            if (!empty($topHabis)) {
+                $ws->setCellValue('A' . $rowIdx, 'Top Barang Paling Sering Habis');
+                $ws->getStyle('A' . $rowIdx)->getFont()->setBold(true);
+                $rowIdx++;
+                $ws->setCellValue('A' . $rowIdx, 'Rank');
+                $ws->setCellValue('B' . $rowIdx, 'Nama Barang');
+                $ws->setCellValue('C' . $rowIdx, 'Jumlah');
+                $ws->getStyle('A'.$rowIdx.':C'.$rowIdx)->getFont()->setBold(true);
+                $rowIdx++;
+                foreach ($topHabis as $it) {
+                    $ws->setCellValue('A' . $rowIdx, $it['rank']);
+                    $ws->setCellValue('B' . $rowIdx, $it['nama_barang']);
+                    $ws->setCellValue('C' . $rowIdx, $it['jumlah']);
+                    $rowIdx++;
+                }
+                $rowIdx++;
+            }
+
+            // Top Tipis
+            $topTipis = StockAnalytics::topTipis($data, $limitMap, $keyToLabel);
+            if (!empty($topTipis)) {
+                $ws->setCellValue('A' . $rowIdx, 'Top Barang Hampir Habis');
+                $ws->getStyle('A' . $rowIdx)->getFont()->setBold(true);
+                $rowIdx++;
+                $ws->setCellValue('A' . $rowIdx, 'Rank');
+                $ws->setCellValue('B' . $rowIdx, 'Nama Barang');
+                $ws->setCellValue('C' . $rowIdx, 'Jumlah');
+                $ws->getStyle('A'.$rowIdx.':C'.$rowIdx)->getFont()->setBold(true);
+                $rowIdx++;
+                foreach ($topTipis as $it) {
+                    $ws->setCellValue('A' . $rowIdx, $it['rank']);
+                    $ws->setCellValue('B' . $rowIdx, $it['nama_barang']);
+                    $ws->setCellValue('C' . $rowIdx, $it['jumlah']);
+                    $rowIdx++;
+                }
+            }
+
+            foreach (range('A', 'C') as $col) {
+                $ws->getColumnDimension($col)->setAutoSize(true);
+            }
+        } else {
+            $ws->setCellValue('A5', 'Pilih rentang tanggal terlebih dahulu.');
+        }
+
+        return self::xlsxResponse($spreadsheet, 'laporan_'.now()->format('Ymd_His').'.xlsx');
     }
 
     // =========================================================

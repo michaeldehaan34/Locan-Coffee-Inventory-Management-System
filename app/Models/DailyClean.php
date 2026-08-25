@@ -33,6 +33,7 @@ class DailyClean extends Model
         'shift',
         'barista_id',
         'barista',
+        'inventory_type',
         'created_at',
     ];
 
@@ -50,9 +51,9 @@ class DailyClean extends Model
     }
 
     /**
-     * The barista who submitted this daily clean.
+     * The user who submitted this daily clean.
      */
-    public function barista(): BelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(Barista::class, 'barista_id');
     }

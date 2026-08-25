@@ -31,31 +31,12 @@
                         </div>
                         <div class="mb-3">
                             <label for="shift" class="form-label">Shift</label>
-                            <select class="form-select" id="shift" name="shift" required>
-                                <option value="">Pilih Shift</option>
-                                @foreach ($shift_list as $s)
-                                    <option value="{{ $s }}">{{ $s }}</option>
-                                @endforeach
-                            </select>
+                            <input type="text" class="form-control" id="shift" name="shift" placeholder="Contoh: Pagi, Shift 1, dll" required>
                         </div>
                         <div class="mb-3">
-                            <label for="token_r17" class="form-label">Token Listrik R17</label>
+                            <label for="token_listrik" class="form-label">Token Listrik</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="token_r17" name="token_r17" inputmode="decimal" placeholder="Contoh: 123,45" required>
-                                <span class="input-group-text">kWh</span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="token_r18" class="form-label">Token Listrik R18</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="token_r18" name="token_r18" inputmode="decimal" placeholder="Contoh: 123,45" required>
-                                <span class="input-group-text">kWh</span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="token_mesin" class="form-label">Token Listrik Mesin</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="token_mesin" name="token_mesin" inputmode="decimal" placeholder="Contoh: 123,45" required>
+                                <input type="text" class="form-control" id="token_listrik" name="token_listrik" inputmode="decimal" placeholder="Contoh: 123,45" required>
                                 <span class="input-group-text">kWh</span>
                             </div>
                         </div>

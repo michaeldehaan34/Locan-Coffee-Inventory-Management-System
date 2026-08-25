@@ -8,11 +8,11 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'app_name' => 'LOTRA',
+    'app_name' => 'Locan',
 
-    'company_name' => 'LOTRA',
+    'company_name' => 'Locan',
 
-    'subtitle' => 'Coffee Management System',
+    'subtitle' => 'Inventory Management System',
 
     /*
     |--------------------------------------------------------------------------
@@ -20,11 +20,11 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'logo' => 'static/images/lotra_logo.png',
+    'logo' => 'static/images/logo_locan.png',
 
-    'logo_white' => 'static/images/lotra_logo.png',
+    'logo_white' => 'static/images/logo_locan.png',
 
-    'favicon' => 'favicon.ico',
+    'favicon' => 'static/images/logo_locan.png',
 
     /*
     |--------------------------------------------------------------------------

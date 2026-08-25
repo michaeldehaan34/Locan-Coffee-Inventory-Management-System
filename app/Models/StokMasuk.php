@@ -46,6 +46,11 @@ class StokMasuk extends Model
         ];
     }
 
+    public function user()
+    {
+        return $this->belongsTo(Barista::class, 'barista_id');
+    }
+
     /**
      * Relasi ke Master Barang (tabel bahan).
      *

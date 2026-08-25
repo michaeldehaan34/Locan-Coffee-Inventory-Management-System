@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+    # Options -Indexes
+    RewriteEngine On
+
+    # InfinityFree has no storage:link support. Serve only Laravel's public
+    # upload disk for URLs generated with the /storage/ prefix.
+    RewriteCond %{REQUEST_URI} !^/storage/app/public(?:/|$) [NC]
+    RewriteRule ^storage/(.*)$ storage/app/public/$1 [L,NC]
+
+    # Keep the Laravel application root outside the public web path while
+    # allowing public/.htaccess to handle routes and static assets.
+    RewriteCond %{REQUEST_URI} !^/(?:public|storage/app/public)(?:/|$) [NC]
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

@@ -5,13 +5,13 @@
         <div class="login-shell">
             <section class="login-card" id="loginCard">
                 <div class="login-brand">
-                    <img src="{{ asset(config('branding.logo')) }}"
-                         alt="{{ config('branding.company_name') }}"
+                    <img src="{{ asset('static/images/logo_locan.png') }}"
+                         alt="Locan"
                          class="login-logo"
                          width="65"
                          height="65">
-                    <h1 class="login-appname">{{ config('branding.company_name') }} {{ config('branding.subtitle') }}</h1>
-                    <p class="login-subtitle">{{ config('branding.subtitle') }}</p>
+                    <h1 class="login-appname">Locan</h1>
+                    <p class="login-subtitle">Inventory Management System</p>
                 </div>
 
                 <form method="POST" action="{{ route('login') }}" id="loginForm">
@@ -27,7 +27,7 @@
                                 <option value="">Choose your name</option>
 
                                 @if (! empty($baristas))
-                                    <optgroup label="Barista">
+                                    <optgroup label="BARISTA">
                                         @foreach ($baristas as $username)
                                             <option value="barista:{{ $username }}" @selected(old('username') === 'barista:'.$username)>
                                                 {{ $username }}
@@ -36,8 +36,28 @@
                                     </optgroup>
                                 @endif
 
+                                @if (! empty($kitchens))
+                                    <optgroup label="KITCHEN">
+                                        @foreach ($kitchens as $username)
+                                            <option value="barista:{{ $username }}" @selected(old('username') === 'barista:'.$username)>
+                                                {{ $username }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+
+                                @if (! empty($admins))
+                                    <optgroup label="ADMIN GUDANG">
+                                        @foreach ($admins as $username)
+                                            <option value="barista:{{ $username }}" @selected(old('username') === 'barista:'.$username)>
+                                                {{ $username }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+
                                 @if (! empty($managers))
-                                    <optgroup label="Manager">
+                                    <optgroup label="MANAJEMEN">
                                         @foreach ($managers as $username)
                                             <option value="manager:{{ $username }}" @selected(old('username') === 'manager:'.$username)>
                                                 {{ $username }}

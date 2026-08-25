@@ -23,6 +23,12 @@ class RoleMiddleware
     {
         $role = $request->session()->get('role');
 
+        // Auto-heal old session roles
+        if ($role === 'manager') {
+            $role = 'manajemen';
+            $request->session()->put('role', 'manajemen');
+        }
+
         if (! in_array($role, $roles, true)) {
             abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk halaman ini.');
         }

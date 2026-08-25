@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', $title ?? ('Detail Barista - ' . config('branding.app_name')))
+@section('title', $title ?? ('Detail Karyawan - ' . config('branding.app_name')))
 
 @section('content')
 <div class="page-container">
@@ -9,7 +9,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h2 class="mb-0">
-                        <i class="bi bi-person me-2"></i>Detail Barista
+                        <i class="bi bi-person me-2"></i>Detail Karyawan
                     </h2>
                     <a href="{{ route('manager.data-barista') }}" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Kembali
@@ -40,10 +40,12 @@
                         <tr>
                             <td class="text-muted">Role</td>
                             <td>
-                                @if ($barista->role == 'manager')
-                                    <span class="badge bg-warning text-dark">Manager</span>
-                                @else
+                                @if ($barista->role == 'manajemen')
+                                    <span class="badge bg-warning text-dark">Manajemen</span>
+                                @elseif ($barista->role == 'barista')
                                     <span class="badge bg-secondary">Barista</span>
+                                @else
+                                    <span class="badge bg-info text-dark">{{ ucwords($barista->role) }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -71,7 +73,7 @@
 
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ route('manager.data-barista.edit.form', $barista->id) }}" class="btn btn-outline-light">
-                            <i class="bi bi-pencil me-1"></i>Edit Barista
+                            <i class="bi bi-pencil me-1"></i>Edit Karyawan
                         </a>
                     </div>
                 </div>

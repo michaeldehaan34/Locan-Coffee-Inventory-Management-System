@@ -8,8 +8,11 @@ use App\Models\UpdateStok;
 use App\Models\TokenListrik;
 use App\Models\DailyClean;
 use App\Models\DailyCleanPhoto;
+use App\Models\AmbilBahanGudang;
+use App\Models\AmbilBahanGudangItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -75,7 +78,7 @@ class BaristaController extends Controller
      */
     public function stokMasuk(): View
     {
-        $bahanTree = Bahan::groupedActiveTree();
+        $bahanTree = Bahan::groupedActiveTree('coffee_shop');
 
         return view('barista.stok-masuk', [
             'title' => 'Input Stok Masuk',
@@ -116,7 +119,7 @@ class BaristaController extends Controller
             return back()->withInput();
         }
 
-        $activeKeys = Bahan::activeKeys();
+        $activeKeys = Bahan::activeKeys('coffee_shop');
         $data = [
             'tanggal' => $tanggal,
             'shift' => $shift,
@@ -155,7 +158,7 @@ class BaristaController extends Controller
      */
     public function updateStok(): View
     {
-        $bahanTree = Bahan::groupedActiveTree();
+        $bahanTree = Bahan::groupedActiveTree('coffee_shop');
 
         return view('barista.update-stok', [
             'title' => 'Input Update Stok',
@@ -175,6 +178,10 @@ class BaristaController extends Controller
         $shift = (string) $request->input('shift', '');
         $barista = (string) $request->input('barista', '');
 
+        if (session('role') === 'manajemen') {
+            $shift = '-';
+        }
+
         if ($tanggal === '') {
             flash_danger('Tanggal harus diisi.');
 
@@ -185,7 +192,7 @@ class BaristaController extends Controller
 
             return back()->withInput();
         }
-        if (! is_valid_shift($shift)) {
+        if (session('role') !== 'manajemen' && ! is_valid_shift($shift)) {
             flash_danger('Shift tidak valid.');
 
             return back()->withInput();
@@ -196,11 +203,14 @@ class BaristaController extends Controller
             return back()->withInput();
         }
 
-        $activeKeys = Bahan::activeKeys();
+        $activeKeys = Bahan::activeKeys('coffee_shop');
         $data = [
             'tanggal' => $tanggal,
             'shift' => $shift,
             'barista' => $barista,
+            'barista_id' => session('user_id'),
+            'inventory_type' => 'coffee_shop',
+            'created_at' => now(),
         ];
 
         $formData = [
@@ -230,7 +240,125 @@ class BaristaController extends Controller
 
         flash_success('Data update stok berhasil disimpan.');
 
-        return redirect()->route('barista.update-stok');
+                return redirect()->route(session('role') === 'manajemen' ? 'manager.update-stok' : 'barista.update-stok');
+
+    }
+
+    /**
+     * Halaman Input Ambil Bahan Gudang.
+     */
+    public function ambilBahanGudang(): View
+    {
+        $bahanTree = Bahan::groupedActiveTree('coffee_shop');
+        $gudangStocks = \App\Services\StockAnalytics::getGudangStockMap();
+
+        return view('barista.ambil-bahan-gudang', [
+            'title' => 'Input Ambil Bahan Gudang',
+            'bahan_tree' => $bahanTree,
+            'gudang_stocks' => $gudangStocks,
+            'shift_list' => shift_list(),
+            'barista_name' => session('name') ?: session('username'),
+        ]);
+    }
+
+    /**
+     * Proses simpan Ambil Bahan Gudang (Transfer STOK Gudang ke Bar).
+     */
+    public function ambilBahanGudangStore(Request $request): RedirectResponse
+    {
+        $tanggal = (string) $request->input('tanggal', '');
+        $shift = (string) $request->input('shift', '');
+        $barista = (string) $request->input('barista', '');
+
+        if ($tanggal === '') {
+            flash_danger('Tanggal harus diisi.');
+            return back()->withInput();
+        }
+        if (! is_valid_date($tanggal)) {
+            flash_danger('Format tanggal tidak valid.');
+            return back()->withInput();
+        }
+        if (! is_valid_shift($shift)) {
+            flash_danger('Shift tidak valid.');
+            return back()->withInput();
+        }
+        if ($barista === '') {
+            flash_danger('Nama barista harus diisi.');
+            return back()->withInput();
+        }
+
+        $activeKeys = Bahan::activeKeys('coffee_shop');
+        $gudangStocks = \App\Services\StockAnalytics::getGudangStockMap();
+        $kodeToId = [];
+        foreach (Bahan::activeItems('coffee_shop') as $b) {
+            $kodeToId[$b['kode']] = $b['id'];
+        }
+
+        $items = [];
+        foreach ($activeKeys as $kode) {
+            $val = trim((string) $request->input($kode, ''));
+            if ($val !== '' && $val !== '0') {
+                if (! is_numeric($val)) {
+                    flash_danger("Nilai untuk {$kode} harus berupa angka positif.");
+                    return back()->withInput();
+                }
+                
+                $vFloat = (float) $val;
+                if ($vFloat < 0) {
+                    flash_danger("Nilai untuk {$kode} tidak boleh negatif.");
+                    return back()->withInput();
+                }
+
+                $maxStock = $gudangStocks[$kode] ?? 0;
+                if ($vFloat > $maxStock) {
+                    flash_danger("Jumlah pengambilan {$kode} melebihi stok gudang yang tersedia.");
+                    return back()->withInput();
+                }
+
+                if ($vFloat > 0) {
+                    $items[] = [
+                        'bahan_id' => $kodeToId[$kode],
+                        'jumlah' => $vFloat
+                    ];
+                }
+            }
+        }
+
+        if (empty($items)) {
+            flash_danger('Minimal satu bahan harus diambil (jumlah > 0).');
+            return back()->withInput();
+        }
+
+        try {
+            DB::transaction(function () use ($tanggal, $shift, $barista, $items) {
+                $header = AmbilBahanGudang::create([
+                    'tanggal' => $tanggal,
+                    'shift' => $shift,
+                    'barista' => $barista,
+                    'barista_id' => session('user_id'),
+                    'inventory_type' => 'coffee_shop',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                foreach ($items as $item) {
+                    AmbilBahanGudangItem::create([
+                        'ambil_bahan_gudang_id' => $header->id,
+                        'bahan_id' => $item['bahan_id'],
+                        'jumlah' => $item['jumlah'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            });
+
+            flash_success('Transaksi Ambil Bahan Gudang berhasil disimpan.');
+        } catch (\Exception $e) {
+            flash_danger('Terjadi kesalahan saat menyimpan transaksi: ' . $e->getMessage());
+            return back()->withInput();
+        }
+
+        return redirect()->route('barista.ambil-bahan-gudang');
     }
 
     /**
@@ -254,6 +382,11 @@ class BaristaController extends Controller
         $tanggal = (string) $request->input('tanggal', '');
         $shift = (string) $request->input('shift', '');
         $minPhotos = (int) config('lotra.daily_clean_min_photos', 4);
+
+        $request->validate([
+            'foto' => ['required', 'array', 'min:'.$minPhotos],
+            'foto.*' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:7168'],
+        ]);
 
         if ($tanggal === '') {
             flash_danger('Tanggal harus diisi.');
@@ -286,6 +419,7 @@ class BaristaController extends Controller
             'shift' => $shift,
             'barista_id' => session('user_id'),
             'barista' => session('name') ?: session('username'),
+            'inventory_type' => 'coffee_shop',
             'created_at' => now(),
         ]);
 
@@ -322,9 +456,7 @@ class BaristaController extends Controller
     {
         $tanggal = (string) $request->input('tanggal', '');
         $shift = (string) $request->input('shift', '');
-        $tokenR17 = str_replace(',', '.', trim((string) $request->input('token_r17', '')));
-        $tokenR18 = str_replace(',', '.', trim((string) $request->input('token_r18', '')));
-        $tokenMesin = str_replace(',', '.', trim((string) $request->input('token_mesin', '')));
+        $tokenListrik = str_replace(',', '.', trim((string) $request->input('token_listrik', '')));
 
         if ($tanggal === '') {
             flash_danger('Tanggal harus diisi.');
@@ -341,12 +473,10 @@ class BaristaController extends Controller
 
             return back()->withInput();
         }
-        foreach (['token_r17' => 'R17', 'token_r18' => 'R18', 'token_mesin' => 'Mesin'] as $field => $label) {
-            if (trim((string) $request->input($field, '')) === '') {
-                flash_danger("Token Listrik {$label} (kWh) harus diisi.");
+        if ($tokenListrik === '') {
+            flash_danger("Token Listrik (kWh) harus diisi.");
 
-                return back()->withInput();
-            }
+            return back()->withInput();
         }
 
         TokenListrik::create([
@@ -354,9 +484,8 @@ class BaristaController extends Controller
             'shift' => $shift,
             'barista_id' => session('user_id'),
             'barista' => session('name') ?: session('username'),
-            'token_r17' => $tokenR17,
-            'token_r18' => $tokenR18,
-            'token_mesin' => $tokenMesin,
+            'inventory_type' => 'coffee_shop',
+            'token_r17' => $tokenListrik,
             'created_at' => now(),
         ]);
 

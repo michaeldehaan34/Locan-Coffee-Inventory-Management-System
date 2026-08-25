@@ -43,7 +43,6 @@ class StokMasukRequest extends FormRequest
     {
         $rules = [
             'tanggal' => ['required', 'date', 'date_format:Y-m-d'],
-            'shift' => ['required', 'string', \Illuminate\Validation\Rule::in(shift_list())],
             'barista' => ['required', 'string', 'max:100'],
         ];
 
@@ -65,8 +64,6 @@ class StokMasukRequest extends FormRequest
             'tanggal.required' => 'Tanggal harus diisi.',
             'tanggal.date' => 'Format tanggal tidak valid.',
             'tanggal.date_format' => 'Format tanggal tidak valid.',
-            'shift.required' => 'Shift harus diisi.',
-            'shift.in' => 'Shift tidak valid.',
             'barista.required' => 'Nama barista harus diisi.',
         ];
 
@@ -113,8 +110,9 @@ class StokMasukRequest extends FormRequest
     {
         $data = [
             'tanggal' => $this->input('tanggal'),
-            'shift' => $this->input('shift'),
+            'shift' => '-', // Hardcoded as manager no longer inputs shift
             'barista' => $this->input('barista'),
+            'barista_id' => auth()->id(),
         ];
 
         foreach (Bahan::activeKeys() as $kode) {

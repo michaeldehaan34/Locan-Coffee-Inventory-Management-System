@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\StokMasuk;
 use App\Models\GudangKirimStok;
 use App\Models\GudangKirimStokItem;
+use App\Models\AmbilBahanGudang;
+use App\Models\AmbilBahanGudangItem;
 use App\Services\StockAnalytics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,13 +33,13 @@ class HeadbarController extends Controller
 
     public function terimaStokIndex(Request $request): View
     {
-        $kirimStok = \App\Models\GudangKirimStok::with('items.bahan')->get()->map(function($item) {
+        $kirimStok = \App\Models\GudangKirimStok::where('tujuan', 'coffee_shop')->with('items.bahan')->get()->map(function($item) {
             $item->source = 'gudang_kirim';
             $item->pelaku = $item->manager;
             return $item;
         });
 
-        $ambilBahan = \App\Models\AmbilBahanGudang::with('items.bahan')->get()->map(function($item) {
+        $ambilBahan = \App\Models\AmbilBahanGudang::where('inventory_type', 'coffee_shop')->with('items.bahan')->get()->map(function($item) {
             $item->source = 'ambil_bahan_gudang';
             $item->pelaku = $item->barista;
             $item->status = 'diterima'; 
@@ -127,6 +129,25 @@ class HeadbarController extends Controller
             'bahan_tree' => Bahan::groupedActiveTree(),
             'default_data' => $defaultData,
         ]);
+    }
+
+    public function terimaStokProses(Request $request, int $id): RedirectResponse
+    {
+        $record = \App\Models\GudangKirimStok::findOrFail($id);
+        
+        if ($record->status !== 'pending') {
+            flash_danger('Transaksi ini sudah diproses.');
+            return back();
+        }
+
+        $record->update([
+            'status' => 'diterima',
+            'received_at' => now(),
+            'received_by' => session('user_id'),
+        ]);
+
+        flash_success('Stok berhasil diterima.');
+        return back();
     }
 
     public function terimaStokUpdate(Request $request, int $id): RedirectResponse
@@ -235,14 +256,14 @@ class HeadbarController extends Controller
             'barista' => $record->barista,
         ];
 
-        foreach (Bahan::activeKeys() as $kode) {
+        foreach (Bahan::activeKeys('coffee_shop') as $kode) {
             $defaultData[$kode] = $record->{$kode};
         }
 
         return view('headbar.update-stok.edit', [
             'title' => 'Edit Update Stok',
             'id' => $id,
-            'bahan_tree' => Bahan::groupedActiveTree(),
+            'bahan_tree' => Bahan::groupedActiveTree('coffee_shop'),
             'shift_list' => shift_list(),
             'default_data' => $defaultData,
         ]);
@@ -274,7 +295,7 @@ class HeadbarController extends Controller
             return back()->withInput();
         }
 
-        $activeKeys = Bahan::activeKeys();
+        $activeKeys = Bahan::activeKeys('coffee_shop');
         $data = [
             'tanggal' => $tanggal,
             'shift' => $shift,
@@ -325,6 +346,8 @@ class HeadbarController extends Controller
         $barista = $request->input('barista');
 
         $records = DailyClean::query()
+            ->where('inventory_type', 'coffee_shop')
+            ->with(['photos', 'user'])
             ->withCount('photos')
             ->when($tanggal, fn ($q) => $q->where('tanggal', $tanggal))
             ->when($shift, fn ($q) => $q->where('shift', $shift))
@@ -334,7 +357,9 @@ class HeadbarController extends Controller
                 'id' => $r->id,
                 'tanggal' => $r->tanggal ? $r->tanggal->format('Y-m-d') : '',
                 'shift' => $r->shift,
-                'barista' => $r->barista,
+                'barista' => $r->user ? $r->user->nama_lengkap : ($r->barista ?: '-'),
+                'barista_role' => $r->user ? $r->user->role : '',
+                'waktu_wib' => $r->created_at ? \Carbon\Carbon::parse($r->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-',
                 'jumlah_foto' => $r->photos_count,
             ]);
 
@@ -358,7 +383,7 @@ class HeadbarController extends Controller
             'barista' => $rec->barista,
             'photos' => $rec->photos->map(fn ($p) => [
                 'url' => asset('storage/' . ltrim($p->filename ?? '', '/')),
-                'name' => $p->original_name,
+                'original_name' => $p->original_name,
             ]),
         ]);
     }
@@ -371,7 +396,7 @@ class HeadbarController extends Controller
         $rec = DailyClean::with('photos')->findOrFail($id);
 
         $photos = $rec->photos->map(fn ($p) => [
-            'url' => \Illuminate\Support\Facades\Storage::url($p->filename),
+            'url' => asset('storage/' . ltrim($p->filename ?? '', '/')),
             'original_name' => $p->original_name,
         ]);
 
@@ -394,11 +419,14 @@ class HeadbarController extends Controller
      * 3. Hapus folder jika kosong.
      * 4. Hapus record daily_clean.
      */
-    public function dailyCleanDestroy(int $id): RedirectResponse
+    public function dailyCleanDestroy(int $id)
     {
         $record = DailyClean::with('photos')->find($id);
 
         if (! $record) {
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Data Daily Clean tidak ditemukan.'], 404);
+            }
             flash_danger('Data Daily Clean tidak ditemukan.');
             return redirect()->back();
         }
@@ -413,21 +441,13 @@ class HeadbarController extends Controller
                 $photo->delete();
             }
 
-            // Hapus folder tanggal jika kosong
-            $firstPhoto = $record->photos->first();
-            if ($firstPhoto && $firstPhoto->filename) {
-                $folderPath = dirname($firstPhoto->filename);
-                if ($folderPath && $folderPath !== '.' && $folderPath !== '/') {
-                    $remainingFiles = Storage::disk('public')->allFiles($folderPath);
-                    if (empty($remainingFiles)) {
-                        Storage::disk('public')->deleteDirectory($folderPath);
-                    }
-                }
-            }
-
+            // Hapus folder tanggal jika kosong (Dihilangkan untuk mencegah Lstat failed exception di Windows)
             $record->delete();
         });
 
+        if (request()->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Daily Clean berhasil dihapus.']);
+        }
         flash_success('Daily Clean berhasil dihapus.');
         return redirect()->back();
     }
@@ -438,11 +458,14 @@ class HeadbarController extends Controller
      * Menerima array ID via POST, lalu memproses penghapusan
      * dalam satu transaksi database.
      */
-    public function dailyCleanBulkDelete(Request $request): RedirectResponse
+    public function dailyCleanBulkDelete(Request $request)
     {
         $ids = $request->input('ids', []);
 
         if (empty($ids) || ! is_array($ids)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Pilih minimal satu data terlebih dahulu.'], 400);
+            }
             flash_danger('Pilih minimal satu data terlebih dahulu.');
             return redirect()->route('headbar.riwayat.daily-clean');
         }
@@ -452,6 +475,9 @@ class HeadbarController extends Controller
         $ids = array_filter($ids, fn ($v) => $v > 0);
 
         if (empty($ids)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Pilih minimal satu data terlebih dahulu.'], 400);
+            }
             flash_danger('Pilih minimal satu data terlebih dahulu.');
             return redirect()->route('headbar.riwayat.daily-clean');
         }
@@ -471,28 +497,17 @@ class HeadbarController extends Controller
                     $photo->delete();
                 }
 
-                // Hapus folder per tanggal jika kosong
-                $firstPhoto = $record->photos->first();
-                if ($firstPhoto && $firstPhoto->filename) {
-                    $folderPath = dirname($firstPhoto->filename);
-                    if ($folderPath && $folderPath !== '.' && $folderPath !== '/') {
-                        $remainingFiles = Storage::disk('public')->allFiles($folderPath);
-                        if (empty($remainingFiles)) {
-                            Storage::disk('public')->deleteDirectory($folderPath);
-                        }
-                    }
-                }
-
+                // Hapus folder per tanggal jika kosong (Dihilangkan untuk mencegah Lstat failed exception di Windows)
                 $record->delete();
             }
         });
 
-        flash_success("{$count} data Daily Clean berhasil dihapus.");
-        return redirect()->route('headbar.riwayat.daily-clean');
-
-
-
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => "$count data Daily Clean berhasil dihapus."]);
         }
+        flash_success("$count data Daily Clean berhasil dihapus.");
+        return redirect()->route('headbar.riwayat.daily-clean');
+    }
 
     // =========================================================
     // UPDATE STOK DETAIL (FULL PAGE)
@@ -502,7 +517,7 @@ class HeadbarController extends Controller
      */
     public function updateStokDetail(int $id): View
     {
-        $record = UpdateStok::findOrFail($id);
+        $record = UpdateStok::with('user')->findOrFail($id);
         $activeKeys = Bahan::activeKeys();
         $bahanMap = Bahan::query()
             ->whereIn('kode', $activeKeys)
@@ -544,16 +559,20 @@ public function riwayatTokenListrik(Request $request): View
         $barista = $request->input('barista');
 
         $records = TokenListrik::query()
+            ->where('inventory_type', 'coffee_shop')
+            ->with('user')
             ->when($tglAwal, fn ($q) => $q->where('tanggal', '>=', $tglAwal))
             ->when($tglAkhir, fn ($q) => $q->where('tanggal', '<=', $tglAkhir))
             ->when($shift, fn ($q) => $q->where('shift', $shift))
             ->when($barista, fn ($q) => $q->where('barista', 'like', '%'.$barista.'%'))
-            ->orderByDesc('tanggal')->orderByDesc('id')->take(1)->get()
+            ->orderByDesc('tanggal')->orderByDesc('id')->get()
             ->map(fn ($r) => [
                 'id' => $r->id,
                 'tanggal' => $r->tanggal ? $r->tanggal->format('Y-m-d') : '',
                 'shift' => $r->shift,
-                'barista' => $r->barista,
+                'barista' => $r->user ? $r->user->nama_lengkap : ($r->barista ?: '-'),
+                'barista_role' => $r->user ? $r->user->role : '',
+                'waktu_wib' => $r->created_at ? \Carbon\Carbon::parse($r->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-',
                 'token_listrik_total' => (float)$r->token_r17 + (float)$r->token_r18 + (float)$r->token_mesin,
             ]);
 
@@ -647,4 +666,366 @@ public function riwayatTokenListrik(Request $request): View
 
     // =========================================================
 
+    // =========================================================
+    // PENGATURAN LIMIT
+    // =========================================================
+    public function pengaturanLimit(Request $request): View
+    {
+        $type = 'coffee_shop'; // Hardcoded
+
+        $limits = Bahan::forInventory($type)->where('is_active', 1)
+            ->orderBy('sort_order')->orderBy('id')
+            ->select('id', 'kode', 'nama', 'satuan', 'kategori', 'urutan')
+            ->get()
+            ->map(function ($b) use ($type) {
+                $lim = \App\Models\BahanLimit::where('bahan_id', $b->id)->where('inventory_type', $type)->first();
+                return (object) [
+                    'id' => $b->id,
+                    'kode' => $b->kode,
+                    'nama' => $b->nama,
+                    'satuan' => $b->satuan,
+                    'limit_habis' => $lim->limit_habis ?? StockAnalytics::DEFAULT_LIMIT_HABIS,
+                    'limit_tipis' => $lim->limit_tipis ?? StockAnalytics::DEFAULT_LIMIT_TIPIS,
+                ];
+            });
+
+        return view('headbar.pengaturan-limit.index', [
+            'title' => 'Pengaturan Limit Stok (Coffeeshop)',
+            'limits' => $limits,
+            'inventory_type' => $type,
+        ]);
+    }
+
+    public function pengaturanLimitEdit(Request $request, int $id): View
+    {
+        $type = 'coffee_shop';
+        $bahan = Bahan::findOrFail($id);
+        $lim = \App\Models\BahanLimit::where('bahan_id', $bahan->id)->where('inventory_type', $type)->first();
+
+        return view('headbar.pengaturan-limit.edit', [
+            'title' => 'Edit Limit Stok (Coffeeshop)',
+            'bahan' => $bahan,
+            'limit_habis' => $lim->limit_habis ?? StockAnalytics::DEFAULT_LIMIT_HABIS,
+            'limit_tipis' => $lim->limit_tipis ?? StockAnalytics::DEFAULT_LIMIT_TIPIS,
+            'inventory_type' => $type,
+        ]);
+    }
+
+    public function pengaturanLimitUpdate(Request $request, int $id): RedirectResponse
+    {
+        $bahan = Bahan::findOrFail($id);
+        $type = 'coffee_shop';
+
+        $request->validate([
+            'limit_habis' => 'required|numeric|min:0',
+            'limit_tipis' => 'required|numeric|min:0',
+        ]);
+
+        \App\Models\BahanLimit::updateOrCreate(
+            [
+                'bahan_id' => $bahan->id,
+                'inventory_type' => $type
+            ],
+            [
+                'limit_habis' => $request->input('limit_habis'),
+                'limit_tipis' => $request->input('limit_tipis'),
+            ]
+        );
+
+        flash_success('Limit stok berhasil disimpan.');
+        return redirect()->route('headbar.pengaturan-limit');
+    }
+
+    // =========================================================
+    // EDIT AKUN SAYA (UPDATE PROFILE)
+    // =========================================================
+
+    public function updateProfile(Request $request): RedirectResponse|\Illuminate\Http\JsonResponse
+    {
+        $userId = (int) session('user_id');
+        $user = \App\Models\Barista::findOrFail($userId);
+
+        $nama = trim((string) $request->input('nama', ''));
+        $username = trim((string) $request->input('username', ''));
+        $passwordLama = (string) $request->input('password_lama', '');
+        $passwordBaru = (string) $request->input('password_baru', '');
+        $passwordKonfirmasi = (string) $request->input('password_baru_confirmation', '');
+
+        $errors = [];
+
+        // ---- Validasi Nama ----
+        if ($nama === '') {
+            $errors['nama'] = ['Nama lengkap wajib diisi.'];
+        }
+
+        // ---- Validasi Username (unique) ----
+        if ($username !== '') {
+            $exists = \App\Models\Barista::where('username', $username)
+                ->where('id', '<>', $userId)
+                ->exists();
+            if ($exists) {
+                $errors['username'] = ['Username sudah digunakan oleh akun lain.'];
+            }
+        }
+
+        // ---- Validasi Password (jika ingin ganti) ----
+        $gantiPassword = $passwordBaru !== '';
+
+        if ($gantiPassword) {
+            if ($passwordLama === '') {
+                $errors['password_lama'] = ['Password lama harus diisi jika ingin mengganti password.'];
+            } else {
+                if ($user->password) {
+                    if (! \Illuminate\Support\Facades\Hash::check($passwordLama, $user->password)) {
+                        $errors['password_lama'] = ['Password lama tidak sesuai.'];
+                    }
+                } else {
+                    $expectedPassword = substr((string) $user->no_telp, -6);
+                    if ($passwordLama !== $expectedPassword) {
+                        $errors['password_lama'] = ['Password lama tidak sesuai. Gunakan 6 digit terakhir nomor telepon.'];
+                    }
+                }
+            }
+
+            if (strlen($passwordBaru) < 8) {
+                $errors['password_baru'] = ['Password baru minimal 8 karakter.'];
+            }
+
+            if ($passwordBaru !== $passwordKonfirmasi) {
+                $errors['password_baru_confirmation'] = ['Konfirmasi password baru tidak sesuai.'];
+            }
+        }
+
+        // ---- Jika ada error, return response sesuai mode request ----
+        if (count($errors) > 0) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => $errors,
+                ], 422);
+            }
+
+            foreach ($errors as $field => $msgs) {
+                foreach ($msgs as $msg) {
+                    flash_danger($msg);
+                }
+            }
+            return back()->withInput();
+        }
+
+        // ---- Update data ----
+        $updateData = [
+            'nama_lengkap' => $nama,
+        ];
+
+        if ($username !== '') {
+            $updateData['username'] = $username;
+        }
+
+        if ($gantiPassword) {
+            $updateData['password'] = $passwordBaru; // Will be hashed automatically by Eloquent cast
+        }
+
+        $user->update($updateData);
+
+        // ---- Update session ----
+        session()->put('name', $nama);
+        if ($username !== '') {
+            session()->put('username', $username);
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Profil berhasil diperbarui.',
+            ]);
+        }
+
+        flash_success('Profil berhasil diperbarui.');
+        return back();
+    }
+
+    public function ambilBahan(): View
+    {
+        $bahanTree = Bahan::groupedActiveTree('coffee_shop');
+        $gudangStocks = \App\Services\StockAnalytics::getGudangStockMap();
+
+        return view('headbar.coffee-shop.ambil-bahan', [
+            'title' => 'Ambil Bahan Gudang - Headbar',
+            'bahan_tree' => $bahanTree,
+            'gudang_stocks' => $gudangStocks,
+            'shift_list' => shift_list(),
+            'barista_name' => session('name') ?: session('username'),
+        ]);
+    }
+
+    public function ambilBahanStore(Request $request): RedirectResponse
+    {
+        $tanggal = (string) $request->input('tanggal', '');
+        $shift = (string) $request->input('shift', '');
+        $barista = (string) $request->input('barista', '');
+
+        if ($tanggal === '') {
+            flash_danger('Tanggal harus diisi.');
+            return back()->withInput();
+        }
+        if (! is_valid_date($tanggal)) {
+            flash_danger('Format tanggal tidak valid.');
+            return back()->withInput();
+        }
+        if (! is_valid_shift($shift)) {
+            flash_danger('Shift tidak valid.');
+            return back()->withInput();
+        }
+        if ($barista === '') {
+            flash_danger('Nama barista harus diisi.');
+            return back()->withInput();
+        }
+
+        $activeKeys = Bahan::activeKeys('coffee_shop');
+        $gudangStocks = \App\Services\StockAnalytics::getGudangStockMap();
+        $kodeToId = [];
+        foreach (Bahan::activeItems('coffee_shop') as $b) {
+            $kodeToId[$b['kode']] = $b['id'];
+        }
+
+        $items = [];
+        foreach ($activeKeys as $kode) {
+            $val = trim((string) $request->input($kode, ''));
+            if ($val !== '' && $val !== '0') {
+                if (! is_numeric($val)) {
+                    flash_danger("Nilai untuk {$kode} harus berupa angka positif.");
+                    return back()->withInput();
+                }
+                
+                $vFloat = (float) $val;
+                if ($vFloat < 0) {
+                    flash_danger("Nilai untuk {$kode} tidak boleh negatif.");
+                    return back()->withInput();
+                }
+
+                $maxStock = $gudangStocks[$kode] ?? 0;
+                if ($vFloat > $maxStock) {
+                    flash_danger("Jumlah pengambilan {$kode} melebihi stok gudang yang tersedia.");
+                    return back()->withInput();
+                }
+
+                if ($vFloat > 0) {
+                    $items[] = [
+                        'bahan_id' => $kodeToId[$kode],
+                        'jumlah' => $vFloat
+                    ];
+                }
+            }
+        }
+
+        if (empty($items)) {
+            flash_danger('Minimal satu bahan harus diambil (jumlah > 0).');
+            return back()->withInput();
+        }
+
+        try {
+            DB::transaction(function () use ($tanggal, $shift, $barista, $items) {
+                $header = AmbilBahanGudang::create([
+                    'tanggal' => $tanggal,
+                    'shift' => $shift,
+                    'barista' => $barista,
+                    'barista_id' => session('user_id'),
+                    'inventory_type' => 'coffee_shop',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                foreach ($items as $item) {
+                    AmbilBahanGudangItem::create([
+                        'ambil_bahan_gudang_id' => $header->id,
+                        'bahan_id' => $item['bahan_id'],
+                        'jumlah' => $item['jumlah'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            });
+
+            flash_success('Transaksi Ambil Bahan Gudang berhasil disimpan.');
+        } catch (\Exception $e) {
+            flash_danger('Terjadi kesalahan saat menyimpan transaksi: ' . $e->getMessage());
+            return back()->withInput();
+        }
+
+        return redirect()->route('headbar.coffee-shop.ambil-bahan');
+    }
+
+    /**
+     * Hapus satu data Update Stok.
+     */
+    
+    /**
+     * Hapus banyak data Update Stok.
+     */
+    public function updateStokBulkDelete(Request $request): \Illuminate\Http\JsonResponse|RedirectResponse
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids)) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada data yang dipilih.']);
+            }
+            return back()->with('error', 'Tidak ada data yang dipilih.');
+        }
+
+        try {
+            DB::transaction(function () use ($ids) {
+                $records = UpdateStok::whereIn('id', $ids)->get();
+                foreach ($records as $record) {
+                    // UpdateStok::boot() will handle cascading deletes of UpdateStokItem if applicable
+                    $record->delete();
+                }
+            });
+
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => count($ids) . ' data berhasil dihapus.']);
+            }
+            return back()->with('success', count($ids) . ' data berhasil dihapus.');
+        } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Gagal menghapus data: ' . $e->getMessage()]);
+            }
+            return back()->with('error', 'Gagal menghapus data: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Hapus banyak data Terima Stok.
+     */
+    public function terimaStokBulkDelete(Request $request): \Illuminate\Http\JsonResponse|RedirectResponse
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids)) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada data yang dipilih.']);
+            }
+            return back()->with('error', 'Tidak ada data yang dipilih.');
+        }
+
+        try {
+            DB::transaction(function () use ($ids) {
+                $records = StokMasuk::whereIn('id', $ids)->get();
+                foreach ($records as $record) {
+                    // StokMasuk::boot() cascading deletes
+                    $record->delete();
+                }
+            });
+
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => count($ids) . ' data berhasil dihapus.']);
+            }
+            return back()->with('success', count($ids) . ' data berhasil dihapus.');
+        } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Gagal menghapus data: ' . $e->getMessage()]);
+            }
+            return back()->with('error', 'Gagal menghapus data: ' . $e->getMessage());
+        }
+    }
 }

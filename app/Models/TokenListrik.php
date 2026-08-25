@@ -32,6 +32,7 @@ class TokenListrik extends Model
         'shift',
         'barista_id',
         'barista',
+        'inventory_type',
         'token_r17',
         'token_r18',
         'token_mesin',
@@ -56,9 +57,9 @@ class TokenListrik extends Model
     }
 
     /**
-     * The barista who submitted this token reading.
+     * The user who submitted this token reading.
      */
-    public function barista(): BelongsTo
+    public function user(): BelongsTo
     {
         return $this->belongsTo(Barista::class, 'barista_id');
     }

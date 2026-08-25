@@ -5,7 +5,7 @@ return [
      * Daftar shift yang tersedia (single source of truth) — homolog dengan
      * SHIFT_LIST di Flask config.py.
      */
-    'shift_list' => ['Sekolah', 'Middle 1', 'TPA', 'Middle 2', 'Ronda'],
+    // 'shift_list' => ['Sekolah', 'Middle 1', 'TPA', 'Middle 2', 'Ronda'],
 
     /*
      * Minimal foto wajib di-upload per submission Daily Clean.
@@ -31,12 +31,18 @@ return [
      * master_bahan.html Flask: Bahan Baku Bar / Bahan Baku Kitchen / Equipment
      * / Lainnya).
      */
-    'kategori_list' => ['Bahan Baku Bar', 'Bahan Baku Kitchen', 'Equipment', 'Lainnya'],
+    'kategori_list' => ['Bahan Baku Bar', 'Bahan Baku Kitchen', 'Equipment'],
 
     /*
      * Daftar Satuan untuk Master Barang (homolog opsi <select> satuan di
      * template master_bahan.html Flask).
      */
-    'satuan_list' => ['pcs', 'kg', 'liter', 'gr', 'bag', 'sachet', 'roll', 'kaleng', 'ember', '12kg'],
+    'satuan_list' => [
+        'mg', 'gram', 'kg',
+        'ml', 'liter',
+        'pcs', 'unit', 'buah', 'item', 'set', 'pack', 'paket', 'box', 'karton',
+        'dus', 'botol', 'kaleng', 'jar', 'pouch', 'sachet', 'bungkus', 'lembar',
+        'roll', 'pasang', 'tray', 'cup', 'galon', 'karung'
+    ],
 ];
 

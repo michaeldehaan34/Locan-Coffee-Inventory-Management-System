@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', 'Data Barista - ' . config('branding.app_name'))
+@section('title', 'Data Karyawan - ' . config('branding.app_name'))
 
 @section('content')
 <div class="page-container">
@@ -9,14 +9,14 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h2 class="mb-0">
-                        <i class="bi bi-people me-2"></i>Data Barista
+                        <i class="bi bi-people me-2"></i>Data Karyawan
                     </h2>
 <div>
                         <a href="{{ route('manager.dashboard') }}" class="btn btn-outline-light btn-sm me-2">
                             <i class="bi bi-arrow-left me-1"></i>Kembali
                         </a>
                         <a href="{{ route('manager.data-barista.create') }}" class="btn btn-light btn-sm">
-                            <i class="bi bi-plus-circle me-1"></i>Tambah Barista
+                            <i class="bi bi-plus-circle me-1"></i>Tambah Karyawan
                         </a>
                     </div>
                 </div>
@@ -62,10 +62,12 @@
                                         <td>{{ $b['nama_lengkap'] }}</td>
                                         <td>{{ $b['no_telp'] }}</td>
                                         <td>
-                                            @if ($b['role'] == 'manager')
-                                                <span class="badge bg-warning text-dark">Manager</span>
-                                            @else
+                                            @if ($b['role'] == 'manajemen')
+                                                <span class="badge bg-warning text-dark">Manajemen</span>
+                                            @elseif ($b['role'] == 'barista')
                                                 <span class="badge bg-secondary">Barista</span>
+                                            @else
+                                                <span class="badge bg-info text-dark">{{ ucwords($b['role']) }}</span>
                                             @endif
                                         </td>
                                         <td>{{ $b['created_at'] }}</td>
@@ -90,7 +92,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">Belum ada data barista.</td>
+                                        <td colspan="6" class="text-center text-muted py-4">Belum ada data karyawan.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -110,7 +112,7 @@
             <form method="POST" action="{{ route('manager.data-barista.add') }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Tambah Barista</h5>
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Tambah Karyawan</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -127,7 +129,11 @@
                         <label class="form-label">Role</label>
                         <select name="role" class="form-select" required>
                             <option value="barista">Barista</option>
-                            <option value="manager">Manager</option>
+                            <option value="manajemen">Manajemen</option>
+                            <option value="headbar">Headbar</option>
+                            <option value="kitchen">Kitchen</option>
+                            <option value="headkitchen">Head Kitchen</option>
+                            <option value="admin gudang">Admin Gudang</option>
                         </select>
                     </div>
                 </div>
@@ -173,7 +179,7 @@
             var id = btn.getAttribute('data-id');
             var nama = btn.getAttribute('data-nama');
             swalConfirm({
-                text: 'Yakin ingin menghapus barista "' + nama + '"?',
+                text: 'Yakin ingin menghapus karyawan "' + nama + '"?',
                 onConfirm: function () {
                     deleteForm.action = "{{ url('/manager/data-barista/hapus') }}/" + id;
                     deleteForm.submit();

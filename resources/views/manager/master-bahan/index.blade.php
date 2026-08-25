@@ -15,7 +15,7 @@
                         <a href="{{ route('manager.dashboard') }}" class="btn btn-outline-light btn-sm me-2">
                             <i class="bi bi-arrow-left me-1"></i>Kembali
                         </a>
-                        <a href="{{ route('manager.master-bahan.create') }}" class="btn btn-light btn-sm">
+                        <a href="{{ route('gudang.master-bahan.create') }}" class="btn btn-light btn-sm">
                             <i class="bi bi-plus-circle me-1"></i>Tambah Barang
                         </a>
                     </div>
@@ -27,7 +27,7 @@
     <!-- Search -->
     <div class="row mb-3">
         <div class="col-12">
-            <form method="GET" action="{{ route('manager.master-bahan') }}" class="d-flex gap-2">
+            <form method="GET" action="{{ route('gudang.master-bahan') }}" class="d-flex gap-2">
                 <div class="input-group flex-grow-1">
                     <span class="input-group-text">
                         <i class="bi bi-search"></i>
@@ -40,7 +40,7 @@
                     <i class="bi bi-search me-1"></i>Cari
                 </button>
                 @if (!empty($search))
-                    <a href="{{ route('manager.master-bahan') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('gudang.master-bahan') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
                     </a>
                 @endif
@@ -63,7 +63,6 @@
                                     <th>Kategori</th>
                                     <th>Kelompok</th>
                                     <th>Satuan</th>
-                                    <th>Urutan</th>
                                     <th>Status</th>
                                     <th style="width: 22%;">Aksi</th>
                                 </tr>
@@ -77,7 +76,6 @@
                                         <td>{{ $b->kategori }}</td>
                                         <td>{{ $b->kelompok }}</td>
                                         <td>{{ $b->satuan }}</td>
-                                        <td>{{ $b->urutan }}</td>
                                         <td>
                                             @if ($b->is_active)
                                                 <span class="badge bg-success">Aktif</span>
@@ -87,16 +85,16 @@
                                         </td>
 <td>
                                             <div class="d-flex flex-wrap gap-1">
-                                                <a href="{{ route('manager.master-bahan.detail', $b->id) }}"
+                                                <a href="{{ route('gudang.master-bahan.detail', $b->id) }}"
                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-eye"></i> Detail
                                                 </a>
-                                                <a href="{{ route('manager.master-bahan.edit', $b->id) }}"
+                                                <a href="{{ route('gudang.master-bahan.edit', $b->id) }}"
                                                    class="btn btn-sm btn-outline-light">
                                                     <i class="bi bi-pencil"></i> Edit
                                                 </a>
                                                 <form method="POST"
-                                                      action="{{ route('manager.master-bahan.toggle', $b->id) }}"
+                                                      action="{{ route('gudang.master-bahan.toggle', $b->id) }}"
                                                       class="d-inline form-toggle"
                                                       data-nama="{{ $b->nama }}"
                                                       data-aksi="{{ $b->is_active ? 'menonaktifkan' : 'mengaktifkan' }}">
@@ -112,7 +110,7 @@
                                                     @endif
                                                 </form>
                                                 <form method="POST"
-                                                      action="{{ route('manager.master-bahan.delete', $b->id) }}"
+                                                      action="{{ route('gudang.master-bahan.delete', $b->id) }}"
                                                       class="d-inline form-delete"
                                                       data-nama="{{ $b->nama }}">
                                                     @csrf

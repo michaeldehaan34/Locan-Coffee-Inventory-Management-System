@@ -27,10 +27,20 @@ class RoleLoginController extends Controller
      */
     public function create(): View
     {
-        $baristas = Barista::orderBy('username')->pluck('username')->all();
-        $managers = Manager::orderBy('username')->pluck('username')->all();
+        $baristasData = Barista::orderBy('username')->get(['username', 'role']);
+        
+        $baristasGroup = $baristasData->filter(fn($b) => in_array($b->role, ['barista', 'headbar']))->pluck('username')->all();
+        $kitchenGroup = $baristasData->filter(fn($b) => in_array($b->role, ['kitchen', 'headkitchen']))->pluck('username')->all();
+        $adminGudangGroup = $baristasData->filter(fn($b) => $b->role === 'admin gudang')->pluck('username')->all();
 
-        return view('auth.login', compact('baristas', 'managers'));
+        $managersGroup = Manager::orderBy('username')->pluck('username')->all();
+
+        return view('auth.login', [
+            'baristas' => $baristasGroup,
+            'kitchens' => $kitchenGroup,
+            'admins' => $adminGudangGroup,
+            'managers' => $managersGroup,
+        ]);
     }
 
     /**
@@ -75,8 +85,8 @@ class RoleLoginController extends Controller
         //          if password column is NULL (legacy account), fallback to no_telp[-6:].
         $passwordInput = $request->input('password');
 
-        if ($type === 'manager' && $account->password) {
-            // Manager dengan password hash — verifikasi pakai Hash::check()
+        if (($type === 'manager' || $type === 'barista') && $account->password) {
+            // Manager atau Karyawan dengan password hash — verifikasi pakai Hash::check()
             if (! Hash::check($passwordInput, $account->password)) {
                 return back()->withErrors([
                     'password' => 'Password salah.',
@@ -103,19 +113,41 @@ class RoleLoginController extends Controller
 
         $request->session()->regenerate();
 
+        $role = $type === 'manager' ? 'manajemen' : ($account->role ?? 'barista');
+
         $request->session()->put([
             'user_id'  => $account->id,
             'username' => $account->username,
-            'role'     => $type,
+            'role'     => $role,
             'name'     => $type === 'barista' ? ($account->nama_lengkap ?? $account->username) : $account->username,
         ]);
 
-        if ($type === 'manager') {
+        if ($role === 'manajemen') {
             return redirect()->route('manager.dashboard');
         }
 
-        // Barista lands on the Barista Dashboard after a successful login.
-        return redirect()->route('barista.dashboard');
+        if ($role === 'barista') {
+            return redirect()->route('barista.dashboard');
+        }
+
+        if ($role === 'headbar') {
+            return redirect()->route('headbar.dashboard');
+        }
+
+        if ($role === 'kitchen') {
+            return redirect()->route('kitchen.dashboard');
+        }
+
+        if ($role === 'headkitchen') {
+            return redirect()->route('headkitchen.dashboard');
+        }
+
+        if ($role === 'admin gudang') {
+            return redirect()->route('gudang.dashboard');
+        }
+
+        // Redirect all other roles to the temporary dashboard
+        return redirect('/dashboard/coming-soon');
     }
 
     /**

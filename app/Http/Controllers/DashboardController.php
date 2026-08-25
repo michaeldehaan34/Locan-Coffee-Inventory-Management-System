@@ -36,6 +36,7 @@ class DashboardController extends Controller
             'top_barang_habis' => $data['top_barang_habis'],
             'top_barang_tipis' => $data['top_barang_tipis'],
             'top_aktivitas_barista' => $data['top_aktivitas_barista'],
+            'global_stock' => $data['global_stock'] ?? [],
         ]);
     }
 }

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('web')->group(function () {
     Route::get('login', function () {
         if (session()->has('username')) {
-            if (session('role') === 'manager') {
+            if (session('role') === 'manajemen') {
                 return redirect()->route('manager.dashboard');
             }
 

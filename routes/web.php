@@ -92,6 +92,8 @@ Route::middleware(['session.auth', 'role:headbar'])->group(function () {
             ->name('terima-stok.update');
         Route::post('/terima-stok/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'terimaStokDestroy'])
             ->name('terima-stok.delete');
+        Route::post('/terima-stok/hapus-massal', [\App\Http\Controllers\HeadbarController::class, 'terimaStokBulkDelete'])
+            ->name('riwayat.terima-stok.bulk-delete');
     });
 
     Route::prefix('headbar')->name('headbar.')->group(function () {
@@ -106,6 +108,8 @@ Route::middleware(['session.auth', 'role:headbar'])->group(function () {
             ->name('update-stok.update');
         Route::delete('/update-stok/hapus/{id}', [\App\Http\Controllers\HeadbarController::class, 'updateStokDestroy'])
             ->name('update-stok.delete');
+        Route::post('/update-stok/hapus-massal', [\App\Http\Controllers\HeadbarController::class, 'updateStokBulkDelete'])
+            ->name('riwayat.update-stok.bulk-delete');
 
         Route::get('/riwayat/daily-clean', [\App\Http\Controllers\HeadbarController::class, 'riwayatDailyClean'])
             ->name('riwayat.daily-clean');
@@ -128,6 +132,10 @@ Route::middleware(['session.auth', 'role:headbar'])->group(function () {
         // This acts as a default headbar route
         Route::get('/dashboard', [\App\Http\Controllers\HeadbarController::class, 'dashboardCS'])
             ->name('dashboard');
+
+        // Profile
+        Route::post('/profile/update', [\App\Http\Controllers\HeadbarController::class, 'updateProfile'])
+            ->name('profile.update');
     });
 });
 
@@ -165,14 +173,85 @@ Route::middleware(['session.auth', 'role:kitchen'])->group(function () {
  * Head Kitchen features.
  */
 Route::middleware(['session.auth', 'role:headkitchen'])->group(function () {
-    Route::prefix('headkitchen')->name('headkitchen.')->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\HeadKitchenController::class, 'dashboard'])
+    Route::prefix('headkitchen/kitchen')->name('headkitchen.kitchen.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\HeadKitchenController::class, 'dashboardCS'])
             ->name('dashboard');
 
-        Route::get('/kitchen/riwayat/terima-stok', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokIndex'])
-            ->name('terima-stok.index');
-        Route::get('/kitchen/terima-stok/detail/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokDetail'])
+        // Terima Stok (Dari Gudang)
+        Route::get('/riwayat/terima-stok', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokIndex'])
+            ->name('riwayat.terima-stok.index');
+        Route::delete('/riwayat/terima-stok/hapus/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokDestroy'])
+            ->name('riwayat.terima-stok.delete');
+        Route::post('/riwayat/terima-stok/hapus-massal', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokBulkDelete'])
+            ->name('riwayat.terima-stok.bulk-delete');
+        Route::get('/terima-stok/detail/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokDetail'])
             ->name('terima-stok.detail');
+        Route::get('/terima-stok/edit/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokEdit'])
+            ->name('terima-stok.edit');
+        Route::post('/terima-stok/update/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokUpdate'])
+            ->name('terima-stok.update');
+        Route::post('/terima-stok/hapus/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokDestroy'])
+            ->name('terima-stok.delete');
+        Route::post('/terima-stok/proses/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'terimaStokProses'])
+            ->name('terima-stok.proses');
+
+        // Ambil Bahan Gudang
+        Route::get('/ambil-bahan', [\App\Http\Controllers\HeadKitchenController::class, 'ambilBahan'])
+            ->name('ambil-bahan');
+        Route::post('/ambil-bahan/store', [\App\Http\Controllers\HeadKitchenController::class, 'ambilBahanStore'])
+            ->name('ambil-bahan.store');
+    });
+
+    Route::prefix('headkitchen')->name('headkitchen.')->group(function () {
+        // Monitoring Kitchen
+        Route::get('/riwayat/update-stok', [\App\Http\Controllers\HeadKitchenController::class, 'riwayatUpdateStok'])
+            ->name('riwayat.update-stok');
+        Route::get('/riwayat/update-stok/detail/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'updateStokDetail'])
+            ->name('update-stok.detail');
+        Route::delete('/riwayat/update-stok/hapus/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'updateStokDestroy'])
+            ->name('riwayat.update-stok.delete');
+        Route::post('/riwayat/update-stok/hapus-massal', [\App\Http\Controllers\HeadKitchenController::class, 'updateStokBulkDelete'])
+            ->name('riwayat.update-stok.bulk-delete');
+        Route::get('/update-stok/edit/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'updateStokEdit'])
+            ->name('update-stok.edit');
+        Route::put('/update-stok/update/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'updateStokUpdate'])
+            ->name('update-stok.update');
+        Route::delete('/update-stok/hapus/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'updateStokDestroy'])
+            ->name('update-stok.delete');
+
+        Route::get('/riwayat/daily-clean', [\App\Http\Controllers\HeadKitchenController::class, 'riwayatDailyClean'])
+            ->name('riwayat.daily-clean');
+        Route::get('/riwayat/daily-clean/detail/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'dailyCleanDetailPage'])
+            ->name('riwayat.daily-clean.detail');
+        Route::get('/riwayat/daily-clean/detail-json/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'dailyCleanDetail'])
+            ->name('riwayat.daily-clean.detail-json');
+        Route::delete('/riwayat/daily-clean/hapus/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'dailyCleanDestroy'])
+            ->name('riwayat.daily-clean.delete');
+        Route::post('/riwayat/daily-clean/hapus-massal', [\App\Http\Controllers\HeadKitchenController::class, 'dailyCleanBulkDelete'])
+            ->name('riwayat.daily-clean.bulk-delete');
+
+        Route::get('/riwayat/token-listrik', [\App\Http\Controllers\HeadKitchenController::class, 'riwayatTokenListrik'])
+            ->name('riwayat.token-listrik');
+        Route::delete('/riwayat/token-listrik/hapus/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'tokenListrikDestroy'])
+            ->name('riwayat.token-listrik.delete');
+        Route::post('/riwayat/token-listrik/hapus-massal', [\App\Http\Controllers\HeadKitchenController::class, 'tokenListrikBulkDelete'])
+            ->name('riwayat.token-listrik.bulk-delete');
+
+        // Pengaturan Limit
+        Route::get('/pengaturan-limit', [\App\Http\Controllers\HeadKitchenController::class, 'pengaturanLimit'])
+            ->name('pengaturan-limit');
+        Route::get('/pengaturan-limit/edit/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'pengaturanLimitEdit'])
+            ->name('pengaturan-limit.edit');
+        Route::post('/pengaturan-limit/update/{id}', [\App\Http\Controllers\HeadKitchenController::class, 'pengaturanLimitUpdate'])
+            ->name('pengaturan-limit.update');
+
+        // Edit Akun Saya (Update Profile)
+        Route::post('/profile/update', [\App\Http\Controllers\HeadKitchenController::class, 'updateProfile'])
+            ->name('profile.update');
+
+        // This acts as a default headkitchen route
+        Route::get('/dashboard', [\App\Http\Controllers\HeadKitchenController::class, 'dashboardCS'])
+            ->name('dashboard');
     });
 });
 
@@ -200,6 +279,8 @@ Route::middleware(['session.auth', 'role:manajemen'])->group(function () {
             ->name('terima-stok.update');
         Route::post('/terima-stok/hapus/{id}', [\App\Http\Controllers\ManagerController::class, 'terimaStokDestroy'])
             ->name('terima-stok.delete');
+        Route::post('/terima-stok/hapus-massal', [\App\Http\Controllers\ManagerController::class, 'terimaStokBulkDelete'])
+            ->name('manager.riwayat.terima-stok.bulk-delete');
     });
     */
 
@@ -264,6 +345,8 @@ Route::middleware(['session.auth', 'role:manajemen'])->group(function () {
         ->name('manager.update-stok.update');
     Route::delete('/manager/update-stok/hapus/{id}', [ManagerController::class, 'updateStokDestroy'])
         ->name('manager.update-stok.delete');
+    Route::post('/manager/update-stok/hapus-massal', [ManagerController::class, 'updateStokBulkDelete'])
+        ->name('manager.update-stok.bulk-delete');
 
     Route::get('/manager/riwayat/daily-clean', [ManagerController::class, 'riwayatDailyClean'])
         ->name('manager.riwayat.daily-clean');
@@ -446,5 +529,18 @@ Route::middleware(['session.auth', 'role:admin gudang'])->group(function () {
             ->name('master-bahan.delete');
         Route::post('/master-bahan/status/{id}', [\App\Http\Controllers\MasterBahanController::class, 'toggle'])
             ->name('master-bahan.toggle');
+
+        // Pengaturan Limit
+        Route::get('/pengaturan-limit', [\App\Http\Controllers\GudangController::class, 'pengaturanLimit'])
+            ->name('pengaturan-limit');
+        Route::get('/pengaturan-limit/edit/{id}', [\App\Http\Controllers\GudangController::class, 'pengaturanLimitEdit'])
+            ->name('pengaturan-limit.edit');
+        Route::post('/pengaturan-limit/update/{id}', [\App\Http\Controllers\GudangController::class, 'pengaturanLimitUpdate'])
+            ->name('pengaturan-limit.update');
+            
+        // Update Profile
+        Route::post('/profile/update', [\App\Http\Controllers\GudangController::class, 'updateProfile'])
+            ->name('profile.update');
     });
 });
+

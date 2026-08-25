@@ -11,7 +11,7 @@
                     <h2 class="mb-0">
                         <i class="bi bi-box-seam me-2"></i>Detail Barang
                     </h2>
-                    <a href="{{ route('manager.master-bahan') }}" class="btn btn-outline-light btn-sm">
+                    <a href="{{ route('gudang.master-bahan') }}" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Kembali
                     </a>
                 </div>
@@ -45,10 +45,7 @@
                             <td class="text-muted">Satuan</td>
                             <td>{{ $bahan->satuan }}</td>
                         </tr>
-                        <tr>
-                            <td class="text-muted">Urutan Tampil</td>
-                            <td>{{ $bahan->urutan }}</td>
-                        </tr>
+
                         <tr>
                             <td class="text-muted">Status</td>
                             <td>
@@ -72,7 +69,7 @@
                     <hr class="border-secondary">
 
                     <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ route('manager.master-bahan.edit', $bahan->id) }}" class="btn btn-outline-light">
+                        <a href="{{ route('gudang.master-bahan.edit', $bahan->id) }}" class="btn btn-outline-light">
                             <i class="bi bi-pencil me-1"></i>Edit Barang
                         </a>
                     </div>

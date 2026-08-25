@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('username')->unique();
             $table->string('nama_lengkap')->nullable();
             $table->string('no_telp');
-            $table->enum('role', ['manager', 'barista'])->default('barista');
+            $table->enum('role', ['manager', 'barista', 'manajemen', 'headbar', 'kitchen', 'headkitchen', 'admin gudang'])->default('barista');
             $table->timestamp('created_at')->useCurrent();
         });
     }

@@ -31,17 +31,15 @@
                         </div>
                         <div class="mb-3">
                             <label for="shift" class="form-label">Shift</label>
-                            <select class="form-select" id="shift" name="shift" required>
-                                <option value="">Pilih Shift</option>
-                                @foreach ($shift_list as $s)
-                                    <option value="{{ $s }}">{{ $s }}</option>
-                                @endforeach
-                            </select>
+                            <input type="text" class="form-control" id="shift" name="shift" placeholder="Contoh: Pagi, Shift 1, dll" required>
                         </div>
                         <div class="mb-3">
-                            <label for="foto" class="form-label">Foto Daily Clean (minimal {{ $min_photos }})</label>
+                            <label for="foto" class="form-label">Foto Daily Clean (minimal {{ $min_photos }}, maks 7MB/foto)</label>
                             <input type="file" class="form-control" id="foto" name="foto[]" accept="image/*" multiple onchange="updateCount(this)" required>
                             <div class="form-text" id="fileCount">Belum ada foto dipilih.</div>
+                            @if ($errors->has('foto') || $errors->has('foto.*'))
+                                <div class="text-danger small mt-2">{{ $errors->first('foto') ?: $errors->first('foto.*') }}</div>
+                            @endif
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-success"><i class="bi bi-send me-1"></i>Kirim Daily Clean</button>
@@ -67,7 +65,20 @@ document.getElementById('dailyCleanForm').addEventListener('submit', function (e
     var input = document.getElementById('foto');
     var n = input.files ? input.files.length : 0;
     var min = {{ $min_photos }};
-    if (n < min) { e.preventDefault(); Swal.fire({ icon: 'warning', title: 'Periksa Kembali', text: 'Minimal ' + min + ' foto harus dikirim. Saat ini hanya ' + n + '.', confirmButtonColor: '#DC3545', background: '#1F2026', color: '#e4e4e7', borderRadius: '16px', customClass: { popup: 'swal-dark-popup' } }); }
+    if (n < min) { 
+        e.preventDefault(); 
+        Swal.fire({ icon: 'warning', title: 'Periksa Kembali', text: 'Minimal ' + min + ' foto harus dikirim. Saat ini hanya ' + n + '.', confirmButtonColor: '#DC3545', background: '#1F2026', color: '#e4e4e7', borderRadius: '16px', customClass: { popup: 'swal-dark-popup' } }); 
+        return; 
+    }
+    
+    // Validasi ukuran max 7MB
+    for (var i = 0; i < n; i++) {
+        if (input.files[i].size > 7 * 1024 * 1024) {
+            e.preventDefault();
+            Swal.fire({ icon: 'error', title: 'Ukuran Terlalu Besar', text: 'Ukuran maksimal per foto adalah 7MB. Silakan kompres atau pilih foto lain.', confirmButtonColor: '#DC3545', background: '#1F2026', color: '#e4e4e7', borderRadius: '16px', customClass: { popup: 'swal-dark-popup' } });
+            return;
+        }
+    }
 });
 </script>
 @endpush

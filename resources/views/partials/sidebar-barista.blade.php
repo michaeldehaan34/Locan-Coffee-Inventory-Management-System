@@ -4,8 +4,11 @@
         <button class="sidebar-close" type="button" id="sidebarClose" aria-label="Tutup menu">
             <i class="bi bi-x-lg"></i>
         </button>
-        <div class="sidebar-logo">
+        <div class="sidebar-logo d-none d-lg-flex">
             <img src="{{ asset(config('branding.logo')) }}" alt="{{ config('branding.company_name') }} Logo">
+        </div>
+        <div class="sidebar-logo d-flex d-lg-none">
+            <img src="{{ asset('static/images/logo_locan.png') }}" alt="Locan Logo">
         </div>
         <div class="sidebar-brand-text">
             <span class="brand-name">{{ config('branding.company_name') }}<span class="brand-sub">{{ config('branding.subtitle') }}</span></span>
@@ -21,19 +24,19 @@
         <a class="sidebar-link {{ request()->routeIs('barista.dashboard') ? 'active' : '' }}"
            href="{{ route('barista.dashboard') }}" data-page="dashboard">
             <i class="bi bi-speedometer2"></i>
-            <span>Dashboard</span>
-        </a>
-
-        <a class="sidebar-link {{ request()->routeIs('barista.stok-masuk') ? 'active' : '' }}"
-           href="{{ route('barista.stok-masuk') }}" data-page="generic">
-            <i class="bi bi-box-arrow-in-down"></i>
-            <span>Stok Masuk</span>
+            <span>Dashboard Barista</span>
         </a>
 
         <a class="sidebar-link {{ request()->routeIs('barista.update-stok') ? 'active' : '' }}"
            href="{{ route('barista.update-stok') }}" data-page="update_stok">
             <i class="bi bi-arrow-repeat"></i>
             <span>Update Stok</span>
+        </a>
+
+        <a class="sidebar-link {{ request()->routeIs('barista.ambil-bahan-gudang') ? 'active' : '' }}"
+           href="{{ route('barista.ambil-bahan-gudang') }}" data-page="ambil_bahan_gudang">
+            <i class="bi bi-box-arrow-right"></i>
+            <span>Ambil Bahan Gudang</span>
         </a>
 
         <a class="sidebar-link {{ request()->routeIs('barista.daily-clean') ? 'active' : '' }}"

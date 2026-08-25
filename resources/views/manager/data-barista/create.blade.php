@@ -1,5 +1,5 @@
 @extends('layouts.role')
-@section('title', $title ?? ('Tambah Barista - ' . config('branding.app_name')))
+@section('title', $title ?? ('Tambah Karyawan - ' . config('branding.app_name')))
 
 @section('content')
 <div class="page-container">
@@ -9,7 +9,7 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h2 class="mb-0">
-                        <i class="bi bi-plus-circle me-2"></i>Tambah Barista
+                        <i class="bi bi-plus-circle me-2"></i>Tambah Karyawan
                     </h2>
                     <a href="{{ route('manager.data-barista') }}" class="btn btn-outline-light btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Kembali
@@ -51,7 +51,11 @@
                             <label class="form-label">Role <span class="text-danger">*</span></label>
                             <select name="role" class="form-select @error('role') is-invalid @enderror" required>
                                 <option value="barista" {{ old('role') == 'barista' ? 'selected' : '' }}>Barista</option>
-                                <option value="manager" {{ old('role') == 'manager' ? 'selected' : '' }}>Manager</option>
+                                <option value="manajemen" {{ old('role') == 'manajemen' ? 'selected' : '' }}>Manajemen</option>
+                                <option value="headbar" {{ old('role') == 'headbar' ? 'selected' : '' }}>Headbar</option>
+                                <option value="kitchen" {{ old('role') == 'kitchen' ? 'selected' : '' }}>Kitchen</option>
+                                <option value="headkitchen" {{ old('role') == 'headkitchen' ? 'selected' : '' }}>Head Kitchen</option>
+                                <option value="admin gudang" {{ old('role') == 'admin gudang' ? 'selected' : '' }}>Admin Gudang</option>
                             </select>
                             @error('role')
                                 <div class="invalid-feedback">{{ $message }}</div>

@@ -41,10 +41,7 @@
                                 Generate Laporan
                             </button>
                             @if($summary)
-                            <a href="{{ route('manager.laporan.export', ['tanggal_awal' => $tanggal_awal, 'tanggal_akhir' => $tanggal_akhir]) }}" class="btn btn-outline-light">
-                                <i class="bi bi-file-earmark-pdf me-2"></i>
-                                Export PDF
-                            </a>
+
                             <button type="button" class="btn btn-outline-light" onclick="window.print()">
                                 <i class="bi bi-printer me-2"></i>
                                 Print

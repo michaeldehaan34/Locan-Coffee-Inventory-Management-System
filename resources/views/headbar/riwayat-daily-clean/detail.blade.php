@@ -1,65 +1,66 @@
-@extends('layouts.role')
+﻿@extends('layouts.role')
 @section('title', $title ?? ('Detail Daily Clean - ' . config('branding.app_name')))
 
 @section('content')
 <div class="page-container">
-    <!-- Header -->
-    <div class="row mb-3">
-        <div class="col-12">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
             <div class="card border-0 shadow-sm">
-                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <h2 class="mb-0">
-                        <i class="bi bi-camera-reels me-2"></i>Detail Daily Clean
-                    </h2>
-                    <a href="{{ route('headbar.riwayat.daily-clean') }}" class="btn btn-outline-light btn-sm">
-                        <i class="bi bi-arrow-left me-1"></i>Kembali
-                    </a>
+                <div class="card-header bg-white border-bottom pb-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h3 class="mb-3">
+                        <i class="bi bi-camera-reels me-2 text-primary"></i>
+                        Detail Daily Clean
+                    </h3>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Info Card -->
-    <div class="row">
-        <div class="col-12 col-lg-8 mx-auto">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-4 mb-2">
-                            <small class="text-muted d-block">Tanggal</small>
-                            <strong>{{ $record->tanggal ? $record->tanggal->format('Y-m-d') : '-' }}</strong>
+                
+                <div class="card-body p-4">
+                    <h5 class="mb-3 text-primary border-bottom pb-2">
+                        <i class="bi bi-info-circle me-2"></i>INFORMASI
+                    </h5>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label class="form-label text-muted small fw-medium mb-1">Diinput oleh</label>
+                            <p class="mb-0 fw-bold">
+                                {{ $record->user ? $record->user->nama_lengkap : ($record->barista ?: 'User tidak tercatat') }}<br>
+                                <span class="text-muted small fw-normal">{{ $record->user ? \Illuminate\Support\Str::title($record->user->role) : 'Barista' }}</span>
+                            </p>
                         </div>
-                        <div class="col-md-4 mb-2">
-                            <small class="text-muted d-block">Shift</small>
-                            <strong>{{ $record->shift }}</strong>
-                        </div>
-                        <div class="col-md-4 mb-2">
-                            <small class="text-muted d-block">Barista</small>
-                            <strong>{{ $record->barista }}</strong>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-medium mb-1">Waktu Input</label>
+                            <p class="mb-0 fw-bold">
+                                {{ $record->created_at ? \Carbon\Carbon::parse($record->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-' }}
+                            </p>
                         </div>
                     </div>
 
-                    <hr class="border-secondary mb-3">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-medium mb-1">Tanggal Berlaku</label>
+                            <p class="mb-0">{{ $record->tanggal ? $record->tanggal->format('d F Y') : '-' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-medium mb-1">Shift</label>
+                            <p class="mb-0">{{ $record->shift }}</p>
+                        </div>
+                    </div>
 
-                    <h6 class="mb-3"><i class="bi bi-images me-2"></i>Foto Dokumentasi ({{ $jumlah_foto ?? count($photos) }})</h6>
+                    <h5 class="mb-3 text-primary border-bottom pb-2 mt-4">
+                        <i class="bi bi-images me-2"></i>DETAIL (FOTO)
+                    </h5>
 
                     @if (count($photos) > 0)
-                        <div class="row g-3">
+                        <div class="row g-3 mb-4">
                             @foreach ($photos as $photo)
                                 <div class="col-6 col-md-4 photo-card">
                                     <a href="{{ $photo['url'] }}" target="_blank">
                                         <img src="{{ $photo['url'] }}"
                                              class="img-fluid rounded border photo-preview"
-                                             style="object-fit:cover;height:160px;width:100%;"
-                                             alt="{{ $photo['original_name'] ?? 'Foto' }}"
-                                             onerror="this.style.display='none'; this.closest('.photo-card').querySelector('.photo-placeholder').style.display='block';">
+                                             alt="Daily Clean Photo"
+                                             style="object-fit: cover; aspect-ratio: 1/1; width: 100%; transition: transform 0.2s;"
+                                             onmouseover="this.style.transform='scale(1.05)'"
+                                             onmouseout="this.style.transform='scale(1)'">
                                     </a>
-                                    <div class="photo-placeholder small text-muted text-center py-4 border rounded" style="display:none;">
-                                        Foto tidak ditemukan
-                                    </div>
-                                    <div class="small text-muted text-truncate mt-1">
-                                        {{ $photo['original_name'] ?? 'Foto' }}
-                                    </div>
                                 </div>
                             @endforeach
                         </div>

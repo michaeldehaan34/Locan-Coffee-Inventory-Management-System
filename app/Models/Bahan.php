@@ -64,6 +64,19 @@ class Bahan extends Model
     }
 
     /**
+     * Filter by inventory type (Coffeeshop or Kitchen)
+     */
+    public function scopeForInventory($query, $inventoryType)
+    {
+        if ($inventoryType === 'coffee_shop') {
+            return $query->whereIn('kategori', ['Bahan Baku Bar', 'Equipment']);
+        } elseif ($inventoryType === 'kitchen') {
+            return $query->whereIn('kategori', ['Bahan Baku Kitchen', 'Equipment']);
+        }
+        return $query;
+    }
+
+    /**
      * Active bahan only.
      */
     public function scopeActive($query)
@@ -76,11 +89,17 @@ class Bahan extends Model
      *
      * @return array<int, array{id: int, nama: string}>
      */
-    public static function activeItems(): array
+    public static function activeItems($inventoryType = null): array
     {
-        return self::active()
-            ->orderBy('sort_order')
-            ->orderBy('id')
+        $query = self::active();
+        if ($inventoryType) {
+            $query->forInventory($inventoryType);
+        }
+
+        return $query
+            ->orderByRaw("CASE kategori WHEN 'Bahan Baku Bar' THEN 1 WHEN 'Bahan Baku Kitchen' THEN 2 WHEN 'Equipment' THEN 3 ELSE 4 END")
+            ->orderBy('kelompok', 'asc')
+            ->orderBy('nama', 'asc')
             ->get(['id', 'nama', 'kode', 'kategori', 'kelompok', 'satuan'])
             ->map(fn ($b) => ['id' => $b->id, 'nama' => $b->nama, 'kode' => $b->kode, 'kategori' => $b->kategori, 'kelompok' => $b->kelompok, 'satuan' => $b->satuan])
             ->all();
@@ -91,11 +110,17 @@ class Bahan extends Model
      *
      * @return array<int, string>
      */
-    public static function activeKeys(): array
+    public static function activeKeys($inventoryType = null): array
     {
-        return self::active()
-            ->orderBy('sort_order')
-            ->orderBy('id')
+        $query = self::active();
+        if ($inventoryType) {
+            $query->forInventory($inventoryType);
+        }
+
+        return $query
+            ->orderByRaw("CASE kategori WHEN 'Bahan Baku Bar' THEN 1 WHEN 'Bahan Baku Kitchen' THEN 2 WHEN 'Equipment' THEN 3 ELSE 4 END")
+            ->orderBy('kelompok', 'asc')
+            ->orderBy('nama', 'asc')
             ->pluck('kode')
             ->all();
     }
@@ -105,11 +130,17 @@ class Bahan extends Model
      *
      * @return array<int, array{kategori: string, kelompok_list: array<int, array{kelompok: string, items: array<int, array{kode: string, nama: string, satuan: string}>}>}>
      */
-    public static function groupedActiveTree(): array
+    public static function groupedActiveTree($inventoryType = null): array
     {
-        $rows = self::active()
-            ->orderBy('sort_order')
-            ->orderBy('id')
+        $query = self::active();
+        if ($inventoryType) {
+            $query->forInventory($inventoryType);
+        }
+
+        $rows = $query
+            ->orderByRaw("CASE kategori WHEN 'Bahan Baku Bar' THEN 1 WHEN 'Bahan Baku Kitchen' THEN 2 WHEN 'Equipment' THEN 3 ELSE 4 END")
+            ->orderBy('kelompok', 'asc')
+            ->orderBy('nama', 'asc')
             ->get(['kategori', 'kelompok', 'kode', 'nama', 'satuan'])
             ->all();
 

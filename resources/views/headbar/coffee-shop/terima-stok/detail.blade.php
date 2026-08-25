@@ -10,26 +10,26 @@
                         <i class="bi bi-box-arrow-in-right me-2 text-primary"></i>
                         Detail {{ $source === 'ambil_bahan_gudang' ? 'Ambil Bahan Gudang' : 'Terima Stok' }}
                     </h3>
-                    <div class="mb-3">
-                        @if($record->status === 'pending')
-                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
-                        @else
-                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Diterima</span>
-                        @endif
-                    </div>
                 </div>
                 
                 <div class="card-body p-4">
+                    <h5 class="mb-3 text-primary border-bottom pb-2">
+                        <i class="bi bi-info-circle me-2"></i>INFORMASI
+                    </h5>
+                    
                     <div class="row mb-4">
                         <div class="col-md-6 mb-3 mb-md-0">
-                            <label class="form-label text-muted small fw-medium mb-1">Tanggal Pengiriman</label>
-                            <p class="mb-0 fw-bold">{{ \Carbon\Carbon::parse($record->tanggal)->format('d-m-Y') }}</p>
+                            <label class="form-label text-muted small fw-medium mb-1">Diinput oleh</label>
+                            <p class="mb-0 fw-bold">
+                                {{ $record->pelaku }}<br>
+                                <span class="text-muted small fw-normal">{{ $source === 'ambil_bahan_gudang' ? 'Barista' : 'Admin Gudang' }}</span>
+                            </p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-medium mb-1">
-                                {{ $source === 'ambil_bahan_gudang' ? 'Barista' : 'Manager' }}
-                            </label>
-                            <p class="mb-0 fw-bold">{{ $record->pelaku }}</p>
+                            <label class="form-label text-muted small fw-medium mb-1">Waktu Input</label>
+                            <p class="mb-0 fw-bold">
+                                {{ $record->created_at ? \Carbon\Carbon::parse($record->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' : '-' }}
+                            </p>
                         </div>
                     </div>
 
@@ -45,21 +45,21 @@
                             </p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label text-muted small fw-medium mb-1">Waktu Dibuat</label>
-                            <p class="mb-0">{{ $record->created_at ? \Carbon\Carbon::parse($record->created_at)->format('H:i:s') : '-' }}</p>
+                            <label class="form-label text-muted small fw-medium mb-1">Tujuan</label>
+                            <p class="mb-0 fw-bold">Coffeeshop</p>
                         </div>
                     </div>
 
-                    <h5 class="mb-3 text-primary border-bottom pb-2">
-                        <i class="bi bi-box-seam me-2"></i>Item Bahan Baku yang {{ $source === 'ambil_bahan_gudang' ? 'Diambil' : 'Dikirim' }}
+                    <h5 class="mb-3 text-primary border-bottom pb-2 mt-4">
+                        <i class="bi bi-box-seam me-2"></i>DETAIL
                     </h5>
 
-                    <div class="table-responsive">
+                    <div class="table-responsive mb-4">
                         <table class="table table-bordered">
                             <thead class="table-light">
                                 <tr>
                                     <th width="50" class="text-center">No</th>
-                                    <th>Nama Bahan</th>
+                                    <th>Bahan</th>
                                     <th class="text-end">Jumlah</th>
                                     <th>Satuan</th>
                                 </tr>
@@ -80,10 +80,58 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <h5 class="mb-3 text-primary border-bottom pb-2 mt-4">
+                        <i class="bi bi-check-circle me-2"></i>STATUS
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-medium mb-1">Status</label>
+                            <p class="mb-0">
+                                @if($record->status === 'pending')
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                @else
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Diterima</span>
+                                @endif
+                            </p>
+                        </div>
+                        @if($record->status === 'diterima' && $source === 'gudang_kirim')
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-medium mb-1">Waktu Diterima</label>
+                            <p class="mb-0 fw-bold">
+                                @if($record->received_at)
+                                    {{ \Carbon\Carbon::parse($record->received_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' }}
+                                @else
+                                    {{ \Carbon\Carbon::parse($record->updated_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y, H:i:s') . ' WIB' }}
+                                @endif
+                            </p>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label text-muted small fw-medium mb-1">Diterima oleh</label>
+                            <p class="mb-0 fw-bold">
+                                @if($record->receiver)
+                                    {{ $record->receiver->nama_lengkap }} — {{ $record->receiver->role }}
+                                @else
+                                    Sistem (Legacy)
+                                @endif
+                            </p>
+                        </div>
+                        @endif
+                    </div>
                 </div>
                 
-                <div class="card-footer bg-white border-top p-4 text-end">
-                    <a href="{{ route('headbar.coffee-shop.terima-stok.index') }}" class="btn btn-secondary px-4">Kembali</a>
+                <div class="card-footer bg-white border-top p-4 d-flex justify-content-end align-items-center">
+                    <a href="{{ route('headbar.coffee-shop.terima-stok.index') }}" class="btn btn-secondary px-4 me-2">Kembali</a>
+                    
+                    @if($record->status === 'pending' && $source === 'gudang_kirim')
+                    <form action="{{ route('headbar.coffee-shop.terima-stok.update', $record->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menerima stok ini? Stok yang diterima akan masuk ke inventory.');">
+                        @csrf
+                        <button type="submit" class="btn btn-success px-4">
+                            <i class="bi bi-check-circle me-2"></i>Terima Stok
+                        </button>
+                    </form>
+                    @endif
                 </div>
             </div>
         </div>

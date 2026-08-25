@@ -3,9 +3,81 @@
 
 // Custom application styles
 body {
-    background-color: #f8f9fa;
+    background-color: transparent;
+    min-height: 100%;
+    position: relative;
+    isolation: isolate;
 }
 
 .navbar-brand {
     font-weight: 600;
+}
+
+/* LOTRA: Global background image as a non-intrusive visual identity */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: url("/static/images/background_locan.png") center center / cover no-repeat;
+    background-attachment: fixed;
+    opacity: .35;
+    z-index: -2;
+    pointer-events: none;
+}
+
+body::after {
+    content: "";
+    display: none;
+}
+
+/* Mobile/tablet fallback: avoid fixed attachment on smaller screens for performance */
+@media (max-width: 1024px) {
+    body::before {
+        background-attachment: scroll;
+    }
+}
+
+/* Ensure common UI containers blend beautifully with the background via glassmorphism */
+.card,
+.modal-content,
+.dropdown-menu {
+    background-color: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #212529;
+    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    border-radius: .5rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.table {
+    background-color: transparent !important;
+}
+
+.table th, .table td {
+    background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.form-control,
+input,
+textarea,
+select {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    color: #212529;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: .5rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* Glassmorphism for navbar and sidebar */
+.navbar,
+.sidebar {
+    background-color: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.navbar-nav .nav-link {
+    background-clip: padding-box;
 }

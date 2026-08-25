@@ -43,4 +43,9 @@ class UpdateStok extends Model
             'created_at' => 'datetime',
         ];
     }
+
+    public function user()
+    {
+        return $this->belongsTo(Barista::class, 'barista_id');
+    }
 }

@@ -1,48 +1,62 @@
-# LOTRA — Coffee Management System
+# Locan — Inventory Management System
 
 [![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![PHP](https://img.shields.io/badge/PHP-^8.2-777BB4?logo=php&logoColor=white)](https://php.net)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-**LOTRA** adalah sistem manajemen stok bahan baku coffeeshop berbasis web yang dibangun menggunakan Laravel 12. Sistem ini dirancang untuk membantu operasional coffeeshop dalam memonitor dan mengelola persediaan bahan baku secara efisien, akurat, dan real-time.
+**Locan** adalah sistem manajemen inventaris dan stok terintegrasi berbasis web yang dibangun menggunakan Laravel 12. Sistem ini dirancang untuk memfasilitasi operasional secara efisien dari hulu ke hilir, mencakup manajemen gudang (Warehouse), area Barista (Coffeeshop), dan Kitchen. Sistem ini menerapkan konsep *multi-role* dan pelacakan riwayat (history tracking) untuk menjaga akurasi data.
 
 ---
 
-## ✨ Fitur
+## ✨ Fitur & Role Pengguna
 
-### 👑 Manager
+Sistem ini membagi akses berdasarkan 6 peran pengguna (role) yang saling berintegrasi:
 
-Manager memiliki akses penuh ke seluruh fitur sistem:
+### 👑 Manager / Manajemen
+Memiliki akses pengawasan (monitoring) tingkat atas.
+- **Dashboard Manajemen**: Monitoring performa dan metrik inventaris.
+- **Data Pegawai**: Kelola data akun pegawai secara terpusat (Barista, Kitchen, dll).
+- **Edit Profil**: Manajemen akun dan keamanan mandiri.
 
-| Fitur | Keterangan |
-|-------|-----------|
-| **Dashboard** | Ringkasan statistik stok (aman, tipis, habis), top barang sering habis, top barang hampir habis, dan aktivitas barista |
-| **Data Barista** | Kelola data barista (Tambah, Lihat, Edit, Hapus) dengan validasi nomor telepon dan role |
-| **Master Bahan** | Kelola data bahan baku (Tambah, Lihat, Edit, Hapus, Toggle Aktif/Nonaktif) dengan pengelompokan kategori & kelompok dinamis |
-| **Pengaturan Limit Stok** | Atur batas stok *habis* dan *tipis* per bahan baku untuk monitoring stok otomatis |
-| **Riwayat Stok Masuk** | Lihat, cari, filter (tanggal, shift, barista, barang), tambah, edit, hapus, dan ekspor ke Excel |
-| **Riwayat Update Stok** | Lihat, cari, filter barang, detail, edit, hapus, dan ekspor ke Excel & PDF |
-| **Riwayat Token Listrik** | Lihat, filter (tanggal, shift, barista), detail, hapus, hapus massal, dan ekspor ke Excel |
-| **Riwayat Daily Clean** | Lihat, filter (tanggal, shift, barista), detail foto, hapus, hapus massal, dan ekspor ke Excel |
-| **Forecast Kebutuhan Bahan** | Prediksi kebutuhan bahan baku mingguan berdasarkan riwayat pemakaian (dikelompokkan per kategori & kelompok) |
-| **Estimasi Pembelian** | Estimasi jumlah pembelian yang diperlukan berdasarkan forecast kebutuhan |
-| **Laporan** | Laporan mingguan lengkap dengan ringkasan statistik, top barang, aktivitas barista, forecast, dan ekspor PDF |
-| **Edit Profil / Akun Saya** | Ubah nama, username, dan password akun Manager |
+### 🏢 Admin Gudang (Warehouse)
+Bertanggung jawab atas pusat kontrol stok bahan mentah.
+- **Dashboard Gudang**: Ringkasan persediaan stok dan aktivitas distribusi di gudang.
+- **Stok Masuk Gudang**: Pencatatan bahan/stok yang baru masuk dari *supplier*.
+- **Kirim Stok**: Mencatat dan mendistribusikan pengiriman bahan ke area Coffee Shop atau Kitchen.
+- **Master Bahan**: Mengelola data induk bahan baku (Tambah, Edit, Hapus, Kelompokkan, dan Toggle Aktif/Nonaktif).
+- **Pengaturan Limit**: Mengatur ambang batas (*threshold*) peringatan stok tipis atau habis per bahan baku.
 
-### 👤 Barista
+### ☕ Headbar
+Supervisor untuk operasional area Coffee Shop.
+- **Dashboard Coffee Shop**: Monitoring stok area bar/coffee shop.
+- **Terima Stok**: Memproses/mengonfirmasi penerimaan stok yang dikirim oleh Admin Gudang.
+- **Monitoring Barista**: Mengawasi riwayat kegiatan tim Barista, termasuk:
+  - Riwayat Update Stok
+  - Riwayat Daily Clean (kebersihan harian)
+  - Riwayat penggunaan Token Listrik
 
-Barista memiliki akses terbatas untuk pencatatan operasional harian:
+### 🍵 Barista
+Staf operasional harian di area Coffee Shop.
+- **Dashboard Barista**: Informasi ringkas mengenai tugas harian.
+- **Ambil Bahan Gudang**: Melakukan pencatatan pengambilan bahan mentah ke gudang.
+- **Update Stok**: Memperbarui perhitungan fisik sisa stok aktual di bar pada setiap akhir shift.
+- **Daily Clean**: Mengunggah laporan visual/foto kebersihan area kerja.
+- **Token Listrik**: Melaporkan pemakaian token listrik mesin dan area bar.
 
-| Fitur | Keterangan |
-|-------|-----------|
-| **Login** | Masuk menggunakan akun Barista yang telah didaftarkan oleh Manager |
-| **Dashboard** | Ringkasan aktivitas pribadi (update stok, daily clean, token listrik hari ini & minggu ini) |
-| **Input Stok Masuk** | Catat stok bahan baku yang baru datang (minimal satu item wajib diisi) |
-| **Update Stok** | Catat stok terkini untuk seluruh bahan baku (semua item wajib diisi) |
-| **Input Token Listrik** | Catat pemakaian token listrik (R17, R18, Mesin) per shift |
-| **Daily Clean** | Upload foto dokumentasi kebersihan harian (minimal 4 foto) |
-| **Logout** | Keluar dari sistem |
+### 🍳 Head Kitchen
+Supervisor untuk operasional area Dapur/Kitchen.
+- **Dashboard Kitchen**: Monitoring operasional dan indikator stok di area dapur.
+- **Terima Stok & Ambil Bahan**: Mengelola arus bahan masuk dari gudang ke dapur.
+- **Monitoring Kitchen**: Mengawasi laporan update stok, daily clean, dan token listrik oleh staf kitchen.
+- **Pengaturan Limit Kitchen**: Menyetel batas aman/kritis stok khusus area dapur.
+
+### 🧑‍🍳 Kitchen
+Staf operasional harian di area Dapur.
+- **Dashboard Kitchen (Staff)**: Informasi operasional mandiri.
+- **Ambil Bahan**: Permintaan atau pencatatan pengeluaran bahan dari gudang.
+- **Update Stok**: Sinkronisasi stok fisik area dapur.
+- **Daily Clean & Token Listrik**: Laporan operasional harian dapur.
 
 ---
 
@@ -50,184 +64,47 @@ Barista memiliki akses terbatas untuk pencatatan operasional harian:
 
 | Teknologi | Kegunaan |
 |-----------|----------|
-| [Laravel 12](https://laravel.com) | Framework PHP untuk pengembangan aplikasi web |
-| [PHP](https://php.net) ^8.2 | Bahasa pemrograman backend |
-| [MySQL](https://mysql.com) | Database relasional |
-| [Bootstrap 5](https://getbootstrap.com) | Framework CSS untuk antarmuka responsif |
-| [Bootstrap Icons](https://icons.getbootstrap.com) | Ikon antarmuka |
-| [Blade Template](https://laravel.com/docs/blade) | Engine templating Laravel |
-| [HTML5](https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5) | Struktur halaman web |
-| [CSS3](https://developer.mozilla.org/en-US/docs/Web/CSS) | Styling halaman web |
-| [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) | Interaktivitas frontend |
-| [SweetAlert2](https://sweetalert2.github.io) | Notifikasi dan dialog interaktif |
-| [Vite](https://vitejs.dev) | Build tool untuk asset frontend |
-| [Sass](https://sass-lang.com) | Preprocessor CSS |
-| [Composer](https://getcomposer.org) | Dependency manager PHP |
-| [DomPDF](https://github.com/dompdf/dompdf) | Generate dokumen PDF |
-| [PhpSpreadsheet](https://phpspreadsheet.readthedocs.io) | Generate file Excel (.xlsx) |
+| [Laravel 12](https://laravel.com) | Framework PHP untuk pengembangan backend |
+| [PHP](https://php.net) ^8.2 | Bahasa pemrograman utama |
+| [MySQL](https://mysql.com) | Relational Database Management System |
+| [Bootstrap 5](https://getbootstrap.com) | Framework CSS responsif |
+| [Bootstrap Icons](https://icons.getbootstrap.com) | Ikon antarmuka web |
+| [Blade Template](https://laravel.com/docs/blade) | Engine templating bawaan Laravel |
+| [Vite](https://vitejs.dev) | Build tool untuk *asset* frontend modern |
+| [SweetAlert2](https://sweetalert2.github.io) | Interaksi dialog & notifikasi frontend |
+| [Composer](https://getcomposer.org) & [npm](https://npmjs.com) | Dependency managers |
 
 ---
 
-## 🚀 Installasi
 
-Ikuti langkah-langkah berikut untuk menjalankan project secara lokal:
+## ⚙️ Konfigurasi Branding
 
-### Prasyarat
-
-- PHP >= 8.2
-- Composer
-- MySQL / MariaDB
-- Node.js & npm (untuk kompilasi asset)
-
-### Langkah Instalasi
-
-```bash
-# 1. Clone repository
-git clone https://github.com/username/lotra.git
-cd lotra
-
-# 2. Install dependency PHP
-composer install
-
-# 3. Copy file environment
-cp .env.example .env
-
-# 4. Generate application key
-php artisan key:generate
-
-# 5. Konfigurasi database di file .env
-#    DB_DATABASE=lotra
-#    DB_USERNAME=root
-#    DB_PASSWORD=
-
-# 6. Jalankan migrasi dan seeder
-php artisan migrate --seed
-
-# 7. Install dan kompilasi asset frontend
-npm install
-npm run build
-
-# 8. Jalankan development server
-php artisan serve
-```
-
-Akses aplikasi di `http://localhost:8000`.
-
-> **Catatan:** Login menggunakan akun yang telah di-seed. Password default untuk Barista adalah 6 digit terakhir nomor telepon. Untuk Manager, gunakan password yang telah ditentukan saat seeding.
-
----
-
-## ⚙️ Konfigurasi
-
-Seluruh branding aplikasi terpusat pada file `config/branding.php`:
+Seluruh identitas aplikasi terpusat pada file `config/branding.php`. Anda dapat menyesuaikan tampilan tema secara dinamis:
 
 | Key | Default | Keterangan |
 |-----|---------|------------|
-| `app_name` | `LOTRA` | Nama aplikasi yang tampil pada judul halaman |
-| `company_name` | `LOTRA` | Nama brand/perusahaan |
-| `subtitle` | `Coffee Management System` | Subtitle yang tampil pada sidebar, login, dan footer |
-| `logo` | `static/images/lotra_logo.png` | Path logo utama |
-| `logo_white` | `static/images/lotra_logo.png` | Path logo versi putih (loader) |
-| `favicon` | `favicon.ico` | Path favicon |
-| `primary_color` | `#1E3AFF` | Warna utama tema |
-| `secondary_color` | `#FFFFFF` | Warna sekunder tema |
-| `accent_color` | `#5D79FF` | Warna aksen tema |
-| `background_color` | `#F6F8FF` | Warna latar tema |
-| `hover_color` | `#284BFF` | Warna hover tema |
+| `app_name` | `Locan` | Nama aplikasi yang tampil pada judul/tab halaman |
+| `company_name` | `Locan` | Nama brand/perusahaan |
+| `subtitle` | `Inventory Management System` | Subtitle aplikasi |
+| `logo` | `static/images/logo_locan.png` | Path gambar logo utama |
+| `primary_color` | `#1E3AFF` | Kode HEX warna utama tema |
 
-Ubah nilai pada file tersebut untuk mengganti nama aplikasi, logo, atau warna tema tanpa menyentuh kode tampilan.
+Ubah nilai pada file konfigurasi tersebut untuk melakukan pelabelan ulang (rebranding) instan tanpa perlu mengubah *source code* HTML/CSS.
 
 ---
 
-## 👥 User Roles
+## 📂 Struktur Project (Highlight)
 
-Sistem memiliki dua peran pengguna:
-
-| Role | Hak Akses |
-|------|-----------|
-| **Manager** | Akses penuh — dashboard, master data, riwayat, forecast, laporan, pengaturan limit, dan kelola akun barista |
-| **Barista** | Akses terbatas — login, input stok masuk, update stok, input token listrik, dan daily clean |
-
----
-
-## 📂 Struktur Project
-
-```
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/       # Controller untuk Manager, Barista, Auth, dll
-│   │   ├── Middleware/         # Middleware (SessionAuth, RoleMiddleware)
-│   │   └── Requests/          # Form request validation
-│   ├── Models/                # Model Eloquent (Bahan, Barista, StokMasuk, dll)
-│   ├── Providers/             # Service Providers
-│   └── Services/              # Business logic (StockAnalytics, ExportService)
-├── resources/
-│   └── views/                 # Blade template views
-│       ├── auth/              # Halaman login
-│       ├── barista/           # Halaman khusus barista
-│       ├── layouts/           # Layout utama
-│       ├── manager/           # Halaman khusus manager
-│       └── partials/          # Komponen parsial (sidebar, footer)
-├── routes/
-│   ├── web.php                # Route utama
-│   └── auth.php               # Route autentikasi
-├── public/                    # Asset publik (CSS, JS, images)
-├── database/
-│   ├── migrations/            # Migration database
-│   └── seeders/               # Data awal (seeder)
-├── storage/                   # File upload, cache, logs
-├── config/                    # Konfigurasi aplikasi
-├── composer.json              # Dependency PHP
-└── package.json               # Dependency frontend
-```
-
----
-
-## 📸 Screenshot
-
-> Dokumentasi visual akan segera ditambahkan.
-
-### Halaman Manager
-
-| Dashboard | Data Barista |
-|-----------|-------------|
-| *Placeholder: screenshot dashboard* | *Placeholder: screenshot data barista* |
-
-| Master Bahan | Pengaturan Limit |
-|-------------|-----------------|
-| *Placeholder: screenshot master bahan* | *Placeholder: screenshot pengaturan limit* |
-
-| Forecast | Laporan |
-|----------|---------|
-| *Placeholder: screenshot forecast* | *Placeholder: screenshot laporan* |
-
-| Riwayat Stok Masuk | Riwayat Update Stok |
-|--------------------|-------------------|
-| *Placeholder: screenshot riwayat stok masuk* | *Placeholder: screenshot riwayat update stok* |
-
-| Riwayat Token Listrik | Riwayat Daily Clean |
-|-----------------------|--------------------|
-| *Placeholder: screenshot riwayat token listrik* | *Placeholder: screenshot riwayat daily clean* |
-
-### Halaman Barista
-
-| Login | Dashboard Barista |
-|-------|------------------|
-| *Placeholder: screenshot login* | *Placeholder: screenshot dashboard barista* |
-
-| Input Stok Masuk | Update Stok |
-|-----------------|-------------|
-| *Placeholder: screenshot input stok masuk* | *Placeholder: screenshot update stok* |
-
-| Daily Clean | Token Listrik |
-|-------------|---------------|
-| *Placeholder: screenshot daily clean* | *Placeholder: screenshot token listrik* |
+- **`app/Http/Controllers/`** : Berisi controller terpisah berdasarkan spesialisasi role (contoh: `GudangController`, `ManagerController`, `BaristaController`, `HeadKitchenController`).
+- **`app/Models/`** : Representasi entitas database (`Bahan`, `StokMasuk`, `AmbilBahanGudang`, `GudangKirimStok`, `DailyClean`, dsb).
+- **`routes/web.php`** : Definisi alur rute aplikasi yang dipisahkan secara tegas menggunakan *Middleware* otorisasi berbasis Role.
+- **`resources/views/`** : Struktur template halaman (*Blade*) yang sudah dikelompokkan dalam direktori per-role.
 
 ---
 
 ## 🧑‍💻 Developer
 
-Project ini dikembangkan oleh:
+Project ini dikembangkan sebagai solusi terpadu operasional bisnis oleh:
 
 **Michael De Haan**  
 Universitas Teknologi Yogyakarta  
@@ -238,18 +115,3 @@ Program Studi Sains Data
 ## 📄 Lisensi
 
 Project ini dilisensikan di bawah **MIT License**. Silakan lihat file [LICENSE](LICENSE) untuk informasi lebih lanjut.
-
----
-
-## 📝 Catatan Pengembangan
-
-Sistem **LOTRA** dikembangkan sebagai solusi manajemen operasional coffeeshop berbasis web menggunakan framework **Laravel 12**. Fokus utama pengembangan adalah:
-
-- **Kemudahan penggunaan** — antarmuka yang intuitif dengan pembagian peran yang jelas.
-- **Efisiensi operasional** — pencatatan digital yang menggantikan pencatatan manual.
-- **Monitoring stok real-time** — dashboard dan notifikasi limit stok untuk pengambilan keputusan yang cepat.
-- **Akurasi data** — validasi input otomatis dan riwayat pencatatan yang lengkap.
-- **Portabilitas** — aplikasi web yang dapat diakses dari berbagai perangkat.
-
-Dibangun dengan arsitektur MVC Laravel, sistem ini mengimplementasikan konsep **Single Source of Truth** melalui service `StockAnalytics` untuk seluruh perhitungan analitik, serta **export service** yang menghasilkan laporan dalam format PDF dan Excel sesuai standar pelaporan profesional.
-

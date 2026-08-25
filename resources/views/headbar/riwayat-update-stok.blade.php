@@ -85,19 +85,28 @@
                     </div>
                     <hr class="border-secondary mb-3">
                     <div class="table-responsive">
+                        <form id="bulkDeleteForm" method="POST" action="{{ route('headbar.riwayat.update-stok.bulk-delete') }}">
+                            @csrf
                         <table class="table table-hover align-middle mb-0" id="historyTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 5%;">No</th>
-                                    <th>Tanggal</th>
+                                                                            <th style="width: 4%;">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                                                <label class="form-check-label" for="selectAll"></label>
+                                            </div>
+                                        </th>
+                                        <th style="width: 5%;">No</th>
+                                    <th>Waktu Input</th>
                                     <th>Shift</th>
-                                    <th>Barista</th>
+                                    <th>Diinput Oleh</th>
                                     <th>Jumlah Item</th>
                                     <th style="width: 12%;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="historyBody"></tbody>
                         </table>
+                        </form>
                         <p id="noResult" class="text-muted text-center py-3 mb-0 d-none">Tidak ada data yang sesuai dengan pencarian.</p>
                     </div>
                 </div>
@@ -208,9 +217,18 @@
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
-                    <div class="col-md-4"><strong>Tanggal:</strong> <span id="dTanggal"></span></div>
-                    <div class="col-md-4"><strong>Shift:</strong> <span id="dShift"></span></div>
-                                        <div class="col-md-4"><strong>Barista:</strong> <span id="dBarista"></span></div>
+                    <div class="col-md-4 mb-2">
+                        <small class="text-muted d-block">Diinput oleh:</small>
+                        <strong id="dBarista"></strong> <span id="dBaristaRole"></span>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <small class="text-muted d-block">Waktu:</small>
+                        <strong id="dWaktu"></strong>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <small class="text-muted d-block">Shift:</small>
+                        <strong id="dShift"></strong>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm">
@@ -271,9 +289,9 @@ function renderTable() {
         var tr = document.createElement('tr');
                 tr.innerHTML =
             '<td>' + (i + 1) + '</td>' +
-            '<td>' + escapeHtml(rec.tanggal_display) + '</td>' +
+            '<td><div>' + escapeHtml(rec.tanggal_display) + '</div><small class="text-muted d-block">' + escapeHtml(rec.waktu_wib) + '</small></td>' +
             '<td>' + escapeHtml(rec.shift) + '</td>' +
-            '<td>' + escapeHtml(rec.barista) + '</td>' +
+            '<td><div>' + escapeHtml(rec.barista) + '</div>' + (rec.barista_role ? '<small class="text-muted text-capitalize">' + escapeHtml(rec.barista_role) + '</small>' : '') + '</td>' +
             '<td>' + escapeHtml(rec.jumlah_item) + '</td>' +
             '<td>' +
             '<div class="btn-group btn-group-sm" role="group">' +
@@ -292,6 +310,8 @@ function openDetail(id) {
     document.getElementById('dTanggal').textContent = rec.tanggal_display;
     document.getElementById('dShift').textContent = rec.shift;
     document.getElementById('dBarista').textContent = rec.barista;
+    document.getElementById('dBaristaRole').innerHTML = rec.barista_role ? '&mdash; <span class="text-capitalize">' + rec.barista_role + '</span>' : '';
+    document.getElementById('dWaktu').textContent = rec.waktu_wib;
     var tb = document.getElementById('dItems');
     tb.innerHTML = '';
     rec.items.forEach(function (it) {
@@ -327,7 +347,134 @@ function confirmDelete(id) {
 document.getElementById('searchInput').addEventListener('keyup', renderTable);
 document.getElementById('filterSelect').addEventListener('change', renderTable);
 renderTable();
+
+// =============================================
+// Update Bulk Delete Button
+// =============================================
+function updateBulkDeleteButton() {
+    var checked = document.querySelectorAll('.row-checkbox:checked');
+    var btn = document.getElementById('bulkDeleteBtn');
+    var countSpan = document.getElementById('selectedCount');
+
+    if (checked.length > 0) {
+        btn.disabled = false;
+        countSpan.textContent = checked.length + ' dipilih';
+    } else {
+        btn.disabled = true;
+        countSpan.textContent = '0 dipilih';
+    }
+}
+
+function toggleSelectAll(source) {
+    var checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(function (cb) {
+        cb.checked = source.checked;
+    });
+    updateBulkDeleteButton();
+}
+
+// =============================================
+// Single Delete - SweetAlert2
+// =============================================
+function openSingleDeleteModal(id, tanggal, shift) {
+    var message = 'Yakin ingin menghapus data Update Stok tanggal "' + tanggal + '" shift ' + shift + '?';
+
+    swalConfirm({
+        text: message,
+        confirmButtonColor: '#DC3545',
+        showLoader: true,
+        preConfirm: function () {
+            return fetch("{{ route('headbar.update-stok.delete', 0) }}".replace('/0', '/' + id), {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: (function () {
+                    var fd = new FormData();
+                    fd.append('_token', '{{ csrf_token() }}');
+                    fd.append('_method', 'DELETE');
+                    return fd;
+                })()
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error(response.statusText);
+                }
+                return response.json();
+            }).then(function (data) {
+                if (data.success) {
+                    showToast('success', data.message || 'Data berhasil dihapus.');
+                    setTimeout(function () { window.location.reload(); }, 1000);
+                } else {
+                    showToast('danger', data.message || 'Gagal menghapus.');
+                }
+            }).catch(function () {
+                // Fallback: submit form biasa
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{{ route("headbar.update-stok.delete", 0) }}'.replace('/0', '/' + id);
+                var csrf = document.createElement('input');
+                csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = '{{ csrf_token() }}';
+                form.appendChild(csrf);
+                var method = document.createElement('input');
+                method.type = 'hidden'; method.name = '_method'; method.value = 'DELETE';
+                form.appendChild(method);
+                document.body.appendChild(form);
+                form.submit();
+            });
+        }
+    });
+}
+
+// =============================================
+// Bulk Delete - SweetAlert2
+// =============================================
+function openBulkDeleteModal() {
+    var checked = document.querySelectorAll('.row-checkbox:checked');
+
+    if (checked.length === 0) {
+        showToast('danger', 'Pilih minimal satu data terlebih dahulu.');
+        return;
+    }
+
+    swalConfirm({
+        text: 'Anda akan menghapus ' + checked.length + ' data Update Stok.',
+        confirmButtonColor: '#DC3545',
+        showLoader: true,
+        preConfirm: function () {
+            return fetch("{{ route('headbar.riwayat.update-stok.bulk-delete') }}", {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: (function () {
+                    var fd = new FormData();
+                    fd.append('_token', '{{ csrf_token() }}');
+                    checked.forEach(function (cb) {
+                        fd.append('ids[]', cb.value);
+                    });
+                    return fd;
+                })()
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error(response.statusText);
+                }
+                return response.json();
+            }).then(function (data) {
+                if (data.success) {
+                    showToast('success', data.message || 'Data berhasil dihapus.');
+                    setTimeout(function () { window.location.reload(); }, 1000);
+                } else {
+                    showToast('danger', data.message || 'Gagal menghapus.');
+                }
+            }).catch(function () {
+                // Fallback: submit form biasa
+                document.getElementById('bulkDeleteForm').submit();
+            });
+        }
+    });
+}
 </script>
 @endpush
 @endsection
-

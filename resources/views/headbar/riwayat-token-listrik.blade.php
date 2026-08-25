@@ -71,7 +71,8 @@
                                         <th style="width: 5%;">No</th>
                                         <th>Tanggal</th>
                                         <th>Shift</th>
-                                        <th>Barista</th>
+                                        <th>Diinput Oleh</th>
+                                        <th>Waktu Input</th>
                                         <th style="width: 25%;">Token Listrik (kWh)</th>
                                         <th style="width: 12%;">Aksi</th>
                                     </tr>
@@ -89,7 +90,15 @@
                                             <td>{{ $no }}</td>
                                             <td>{{ $rec['tanggal'] }}</td>
                                             <td>{{ $rec['shift'] }}</td>
-                                            <td>{{ $rec['barista'] }}</td>
+                                            <td>
+                                                <div>{{ $rec['barista'] }}</div>
+                                                @if($rec['barista_role'])
+                                                    <small class="text-muted text-capitalize">{{ $rec['barista_role'] }}</small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <small class="d-block">{{ $rec['waktu_wib'] }}</small>
+                                            </td>
                                             <td>{{ format_kwh($rec['token_listrik_total']) }}</td>
                                             <td>
                                                 <div class="d-flex gap-1">

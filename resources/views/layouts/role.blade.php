@@ -21,9 +21,17 @@
     @stack('extra_css')
 </head>
 <body>
-    @if (session('role') === 'manager')
+    @if (session('role') === 'manajemen')
         @include('partials.sidebar-manager')
-    @else
+    @elseif (session('role') === 'admin gudang')
+        @include('partials.sidebar-gudang')
+    @elseif (session('role') === 'headbar')
+        @include('partials.sidebar-headbar')
+    @elseif (session('role') === 'headkitchen')
+        @include('partials.sidebar-headkitchen')
+    @elseif (session('role') === 'kitchen')
+        @include('partials.sidebar-kitchen')
+    @elseif (session('role') === 'barista')
         @include('partials.sidebar-barista')
     @endif
 
@@ -32,8 +40,8 @@
             <i class="bi bi-list"></i>
         </button>
         <div class="mobile-brand">
-            <img src="{{ asset(config('branding.logo')) }}" alt="{{ config('branding.company_name') }} Logo">
-            <span class="mobile-title">{{ config('branding.company_name') }}<span class="mobile-sub">{{ config('branding.subtitle') }}</span></span>
+            <img src="{{ asset('static/images/logo_locan.png') }}" alt="Locan Logo">
+            <span class="mobile-title">Locan</span>
         </div>
     </div>
 
@@ -41,9 +49,11 @@
 
     <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
 
+    @if (!isset($hideLoader) || !$hideLoader)
     <div class="page-loader" id="pageLoader" aria-hidden="true">
         <img src="{{ asset(config('branding.logo_white')) }}" alt="{{ config('branding.company_name') }}" class="loader-logo">
     </div>
+    @endif
 
     <div class="content-area">
         <main>
@@ -64,13 +74,23 @@
     </div>
 
     <!-- ============================================ -->
-    <!-- MODAL: Edit Akun Manager (Coffee Theme) -->
+    <!-- MODAL: Edit Akun (Coffee Theme) -->
     <!-- ============================================ -->
-    @if (session('role') === 'manager')
+    @php
+        $role = session('role');
+        $canEditProfile = in_array($role, ['manajemen', 'headbar', 'headkitchen', 'admin gudang']);
+        $profileRoute = '';
+        if ($role === 'manajemen') $profileRoute = route('manager.profile.update');
+        elseif ($role === 'headbar') $profileRoute = route('headbar.profile.update');
+        elseif ($role === 'headkitchen') $profileRoute = route('headkitchen.profile.update');
+        elseif ($role === 'admin gudang') $profileRoute = route('gudang.profile.update');
+    @endphp
+
+    @if ($canEditProfile)
     <div class="modal fade" id="editAkunModal" tabindex="-1" aria-labelledby="editAkunModalLabel" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered modal-md">
             <div class="modal-content border border-secondary border-opacity-10 rounded-4 shadow">
-                <form method="POST" action="{{ route('manager.profile.update') }}" id="editAkunForm">
+                <form method="POST" action="{{ $profileRoute }}" id="editAkunForm">
                     @csrf
 
                     <!-- Header with Coffee Gradient -->
@@ -79,7 +99,7 @@
                             <div class="d-flex align-items-center justify-content-between">
                                 <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="editAkunModalLabel">
                                     <span style="font-size: 1.4rem;">👤</span>
-                                    <span class="text-white">Edit Akun Manager</span>
+                                    <span class="text-white">Edit Akun</span>
                                 </h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
                             </div>
